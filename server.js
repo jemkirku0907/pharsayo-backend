@@ -5,7 +5,6 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// POST /api/claude — proxy to Gemini
 app.post('/api/claude', async (req, res) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -14,11 +13,8 @@ app.post('/api/claude', async (req, res) => {
 
   try {
     const { system, messages, max_tokens } = req.body;
-
-    // Build Gemini contents array
     const contents = [];
 
-    // Add conversation messages
     for (const msg of messages) {
       if (typeof msg.content === 'string') {
         contents.push({
@@ -26,7 +22,6 @@ app.post('/api/claude', async (req, res) => {
           parts: [{ text: msg.content }]
         });
       } else if (Array.isArray(msg.content)) {
-        // Handle vision messages (image + text)
         const parts = [];
         for (const part of msg.content) {
           if (part.type === 'text') {
@@ -47,8 +42,11 @@ app.post('/api/claude', async (req, res) => {
       }
     }
 
+    if (system && contents.length > 0 && contents[0].role === 'user') {
+      contents[0].parts.unshift({ text: '[SYSTEM]: ' + system + '\n\n' });
+    }
+
     const body = {
-      system_instruction: system ? { parts: [{ text: system }] } : undefined,
       contents,
       generationConfig: {
         maxOutputTokens: max_tokens || 1000,
@@ -66,12 +64,15 @@ app.post('/api/claude', async (req, res) => {
     );
 
     const data = await response.json();
+    console.log('Gemini raw:', JSON.stringify(data).substring(0, 300));
 
-    // Convert Gemini response to Claude-compatible format
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    console.log('Text:', text.substring(0, 100));
+
     res.json({ content: [{ type: 'text', text }] });
 
   } catch (err) {
+    console.error('Error:', err.message);
     res.status(500).json({ error: 'Proxy error: ' + err.message });
   }
 });
