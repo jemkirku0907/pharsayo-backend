@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "PharSayo",
+    "slug": "pharsayo-ios",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "pharsayo",
+    "platforms": ["ios"],
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.jeoteampogi.pharsayo",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Ginagamit ng PharSayo ang camera para kunan at kilalanin ang label ng gamot.",
+        "NSPhotoLibraryUsageDescription": "Ginagamit ng PharSayo ang photo library para pumili ng larawan ng gamot."
+      }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Payagan ang PharSayo na pumili ng larawan ng iyong gamot.",
+          "cameraPermission": "Payagan ang PharSayo na kunan ng larawan ang label ng gamot."
+        }
+      ]
+    ]
+  }
+}
