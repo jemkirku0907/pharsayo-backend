@@ -48,9 +48,9 @@ function TextInput({ style, ...props }: TextInputProps) {
 }
 
 const COLORS = {
-  ink: '#17342D', muted: '#71847E', brand: '#07816A', brandDark: '#075F50',
-  mint: '#DFF3EC', mintSoft: '#F1F8F5', bg: '#F5F8F6', white: '#FFFFFF',
-  line: '#DFE9E5', cream: '#F4F0DF', danger: '#B84843',
+  ink: '#0D2B24', muted: '#4A7268', brand: '#1BAF8A', brandDark: '#0E6B54',
+  mint: '#D4F2EA', mintSoft: '#F0FAF7', bg: '#F0FAF7', white: '#FFFFFF',
+  line: '#D4EDE7', cream: '#FFF8ED', danger: '#E85454',
 };
 
 const SUPABASE_URL = 'https://zzuhgpzcdkigubowyxjd.supabase.co';
@@ -141,24 +141,26 @@ function LoginScreen({ role, setRole, onLogin, onName }: { role: Role; setRole: 
     <SafeAreaView style={styles.loginSafe}>
       <StatusBar style="dark" />
       <KeyboardAvoidingView style={styles.loginKeyboard} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.loginScroll} keyboardShouldPersistTaps="handled">
-          <View style={styles.brandRow}><View style={styles.logo}><Ionicons name="layers-outline" size={24} color="#fff" /></View><Text style={styles.brand}>PharSayo</Text></View>
-          <View style={[styles.loginHero, { width: contentWidth }]}>
-            <Text style={styles.eyebrow}>GAMOT MO, GABAY MO</Text>
-            <Text style={styles.loginTitle}>Mas malinaw na gabay para sa mas malusog na araw.</Text>
-            <Text style={styles.loginIntro}>Simple at mapagkakatiwalaang kasama para sa tamang pag-inom ng gamot.</Text>
+        <ScrollView contentContainerStyle={styles.loginScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <View style={[styles.legacyHeroCard, { width: contentWidth }]}>
+            <View style={styles.heroBubbleTop} /><View style={styles.heroBubbleBottom} />
+            <View style={styles.legacyLogoFrame}><Ionicons name="layers-outline" size={34} color="#fff" /></View>
+            <Text style={styles.legacyBrand}>PharSayo</Text>
+            <Text style={styles.legacyTagline}>Your smart medication companion</Text>
           </View>
-          <View style={[styles.loginCard, { width: contentWidth }]}>
-            <Text style={styles.cardEyebrow}>MALIGAYANG PAGBABALIK</Text>
-            <Text style={styles.formTitle}>Mag-login</Text>
-            <Text style={styles.formSubtitle}>Tingnan ang iyong gabay ngayong araw.</Text>
+          <View style={[styles.loginForm, { width: contentWidth }]}>
+            <Text style={styles.legacyWelcome}>Maligayang pagdating!</Text>
+            <Text style={styles.legacySubtitle}>Mag-login para masubaybayan ang iyong mga gamot araw-araw.</Text>
             <View style={styles.roleTabs}>{(['Pasyente', 'BHU Staff', 'Admin'] as Role[]).map(item => <Pressable key={item} onPress={() => setRole(item)} style={[styles.roleTab, role === item && styles.roleTabActive]}><Text style={[styles.roleText, role === item && styles.roleTextActive]}>{item}</Text></Pressable>)}</View>
-            <Text style={styles.label}>Email address</Text>
+            <Text style={styles.label}>EMAIL / PHONE / ID</Text>
             <View style={styles.fieldWrap}><Ionicons name="person-outline" size={19} color="#86A69E" /><TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" placeholder="hal. maria@email.com" placeholderTextColor="#93A29D" style={styles.fieldInput} /></View>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>PASSWORD</Text>
             <View style={styles.passwordWrap}><Ionicons name="lock-closed-outline" size={19} color="#86A69E" /><TextInput value={password} onChangeText={setPassword} secureTextEntry={secure} autoComplete="current-password" placeholder="Ilagay ang password" placeholderTextColor="#93A29D" style={styles.passwordInput} /><Pressable onPress={() => setSecure(!secure)}><Text style={styles.showPassword}>{secure ? 'Ipakita' : 'Itago'}</Text></Pressable></View>
+            <Pressable onPress={() => Alert.alert('Password reset', 'Ilagay ang iyong email at ipapadala namin ang reset link.')} style={styles.forgotRow}><Text style={styles.forgotText}>Nakalimutan ang password?</Text></Pressable>
             <Pressable onPress={signIn} disabled={loading} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed, loading && styles.disabled]}>{loading ? <ActivityIndicator color="#fff" /> : <View style={styles.buttonContent}><Text style={styles.primaryButtonText}>Mag-login</Text><Ionicons name="arrow-forward" size={17} color="#fff" /></View>}</Pressable>
+            <View style={styles.loginDivider}><View style={styles.dividerLine} /><Text style={styles.dividerText}>o kaya</Text><View style={styles.dividerLine} /></View>
             <Pressable onPress={() => { onName(role === 'Pasyente' ? 'Maria Angeles' : 'Juan Santos'); onLogin(true); }} style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}><Text style={styles.secondaryButtonText}>Tingnan muna ang demo</Text></Pressable>
+            <Text style={styles.loginFooter}>Suporta sa Filipino at English · v1.0.0</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -220,6 +222,21 @@ function MedicineRow({ medicine }: { medicine: Medicine }) { return <View style=
 
 const styles = StyleSheet.create({
   loadingScreen:{flex:1,alignItems:'center',justifyContent:'center',backgroundColor:COLORS.mintSoft},
+  legacyHeroCard:{height:205,borderRadius:28,alignSelf:'center',alignItems:'center',justifyContent:'center',overflow:'hidden',backgroundColor:COLORS.brand,marginTop:8},
+  heroBubbleTop:{position:'absolute',width:150,height:150,borderRadius:75,top:-65,right:-32,backgroundColor:'rgba(255,255,255,.08)'},
+  heroBubbleBottom:{position:'absolute',width:100,height:100,borderRadius:50,bottom:-56,left:-32,backgroundColor:'rgba(255,255,255,.07)'},
+  legacyLogoFrame:{width:64,height:64,borderRadius:19,alignItems:'center',justifyContent:'center',borderWidth:2,borderColor:'rgba(255,255,255,.45)',backgroundColor:'rgba(255,255,255,.12)'},
+  legacyBrand:{fontSize:27,fontWeight:'800',color:'#fff',marginTop:13,letterSpacing:-.8},
+  legacyTagline:{fontSize:11,color:'rgba(255,255,255,.9)',marginTop:2},
+  loginForm:{alignSelf:'center',paddingTop:27,paddingBottom:8},
+  legacyWelcome:{fontSize:23,fontWeight:'700',color:COLORS.ink,textAlign:'center'},
+  legacySubtitle:{fontSize:12,lineHeight:19,color:COLORS.muted,textAlign:'center',maxWidth:310,alignSelf:'center',marginTop:6},
+  forgotRow:{alignSelf:'flex-end',paddingTop:11,paddingBottom:1},
+  forgotText:{fontSize:11,fontWeight:'500',color:COLORS.brand},
+  loginDivider:{flexDirection:'row',alignItems:'center',gap:10,marginTop:20,marginBottom:4},
+  dividerLine:{flex:1,height:1,backgroundColor:COLORS.line},
+  dividerText:{fontSize:10,color:'#8AADA6'},
+  loginFooter:{fontSize:9,color:'#8AADA6',textAlign:'center',marginTop:20},
   fieldWrap:{width:'100%',height:52,borderWidth:1,borderColor:COLORS.line,borderRadius:14,paddingHorizontal:14,flexDirection:'row',alignItems:'center',gap:10,backgroundColor:'#fff'},
   fieldInput:{flex:1,minWidth:0,height:50,fontSize:14,color:COLORS.ink},
   buttonContent:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8},
