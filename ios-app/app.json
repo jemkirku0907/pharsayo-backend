@@ -5,7 +5,10 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "pharsayo",
-    "platforms": ["ios"],
+    "platforms": [
+      "ios",
+      "web"
+    ],
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
@@ -17,6 +20,9 @@
         "NSPhotoLibraryUsageDescription": "Ginagamit ng PharSayo ang photo library para pumili ng larawan ng gamot."
       }
     },
+    "web": {
+      "bundler": "metro"
+    },
     "plugins": [
       [
         "expo-image-picker",
@@ -24,7 +30,8 @@
           "photosPermission": "Payagan ang PharSayo na pumili ng larawan ng iyong gamot.",
           "cameraPermission": "Payagan ang PharSayo na kunan ng larawan ang label ng gamot."
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }
