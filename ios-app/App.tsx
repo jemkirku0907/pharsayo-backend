@@ -27,10 +27,11 @@ import {
   View,
 } from 'react-native';
 
-type Screen = 'home' | 'medicines' | 'scan' | 'reminders' | 'support';
+type Screen = 'home' | 'medicines' | 'scan' | 'reminders' | 'assistant' | 'support';
 type Role = 'Pasyente' | 'BHU Staff' | 'Admin';
 type Medicine = { id: number; name: string; dose: string; time: string; note: string; taken: boolean };
 type Reminder = { id: number; medicine: string; time: string; enabled: boolean };
+type ChatMessage = { role: 'user' | 'assistant'; content: string; mode?: 'local' | 'gemini' };
 type IconName = keyof typeof Ionicons.glyphMap;
 
 function Text({ style, ...props }: TextProps) {
@@ -55,6 +56,7 @@ const COLORS = {
 
 const SUPABASE_URL = 'https://zzuhgpzcdkigubowyxjd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_NVzpI7OVt4ulDzOLodekIg_cfhT0voF';
+const ASSISTANT_API = 'https://pharsayo.vercel.app/api/assistant';
 
 const initialMedicines: Medicine[] = [
   { id: 1, name: 'Metformin', dose: '500mg', time: '7:00 AM', note: 'Kasabay ng almusal', taken: true },
@@ -73,7 +75,7 @@ const navItems: { id: Screen; label: string; icon: IconName; activeIcon: IconNam
   { id: 'medicines', label: 'Gamot', icon: 'medical-outline', activeIcon: 'medical' },
   { id: 'scan', label: 'I-scan', icon: 'scan-outline', activeIcon: 'scan' },
   { id: 'reminders', label: 'Paalaala', icon: 'notifications-outline', activeIcon: 'notifications' },
-  { id: 'support', label: 'BHU', icon: 'heart-outline', activeIcon: 'heart' },
+  { id: 'assistant', label: 'AI Gabay', icon: 'sparkles-outline', activeIcon: 'sparkles' },
 ];
 
 export default function App() {
@@ -103,6 +105,7 @@ export default function App() {
           {screen === 'medicines' && <MedicinesScreen medicines={medicines} setMedicines={setMedicines} />}
           {screen === 'scan' && <ScannerScreen />}
           {screen === 'reminders' && <RemindersScreen reminders={reminders} setReminders={setReminders} medicines={medicines} />}
+          {screen === 'assistant' && <AssistantScreen medicines={medicines} onSupport={() => setScreen('support')} />}
           {screen === 'support' && <SupportScreen />}
         </View>
         <BottomNav active={screen} onChange={setScreen} />
@@ -185,7 +188,7 @@ function HomeScreen({ medicines, setMedicines, onNavigate }: { medicines: Medici
     {medicines.map(item => <MedicineRow key={item.id} medicine={item} />)}
     <SectionHeading eyebrow="SHORTCUTS" title="Mabilis na gawain" />
     <View style={styles.quickGrid}>{[
-      ['scan', 'scan-outline', 'Kilalanin ang gamot'], ['medicines', 'medical-outline', 'Mga gamot ko'], ['reminders', 'notifications-outline', 'Gumawa ng reminder'], ['support', 'heart-outline', 'BHU support'],
+      ['scan', 'scan-outline', 'Kilalanin ang gamot'], ['medicines', 'medical-outline', 'Mga gamot ko'], ['assistant', 'sparkles-outline', 'Tanungin ang AI Gabay'], ['support', 'heart-outline', 'BHU support'],
     ].map(([id, icon, label]) => <Pressable key={id} onPress={() => onNavigate(id as Screen)} style={styles.quickCard}><View style={styles.quickIcon}><Ionicons name={icon as IconName} size={21} color={COLORS.brand} /></View><Text style={styles.quickLabel}>{label}</Text><Ionicons name="chevron-forward" size={18} color="#91A39D" /></Pressable>)}</View>
   </ScrollView>;
 }
@@ -208,6 +211,53 @@ function ScannerScreen() {
 function RemindersScreen({ reminders, setReminders, medicines }: { reminders: Reminder[]; setReminders: React.Dispatch<React.SetStateAction<Reminder[]>>; medicines: Medicine[] }) {
   const enabledCount = useMemo(() => reminders.filter(item => item.enabled).length, [reminders]);
   return <ScrollView contentContainerStyle={styles.page}><PageTitle eyebrow="NOTIFICATIONS" title="Mga paalaala" copy={`${enabledCount} reminder ang kasalukuyang naka-on.`} action onAction={() => { const med = medicines[0]; if (!med) return Alert.alert('Magdagdag muna ng gamot'); setReminders(items => [...items, { id: Date.now(), medicine: med.name, time: med.time, enabled: true }]); }} />{reminders.map(item => <View key={item.id} style={styles.listRow}><View style={styles.timeBadge}><Text style={styles.timeText}>{item.time}</Text></View><View style={styles.listCopy}><Text style={styles.listTitle}>{item.medicine}</Text><Text style={styles.listSubtitle}>Daily medication reminder</Text></View><Switch value={item.enabled} onValueChange={enabled => setReminders(items => items.map(reminder => reminder.id === item.id ? { ...reminder, enabled } : reminder))} trackColor={{ false: '#DCE6E2', true: '#70CBB3' }} thumbColor={item.enabled ? COLORS.brand : '#fff'} /></View>)}</ScrollView>;
+}
+
+function offlineAssistantAnswer(question: string) {
+  const q = question.toLowerCase();
+  if (/hirap.*(?:hinga|huminga)|sakit.*dibdib|chest pain|nahimatay|overdose|allergic|(?:pamamaga|namamaga).*mukha|emergency/.test(q)) return 'Maaaring emergency ito. Tumawag agad sa 911 o pumunta sa pinakamalapit na emergency room.';
+  if (/amlodipine/.test(q)) return 'Ang amlodipine ay karaniwang para sa mataas na presyon. Inumin ayon sa reseta at sa parehong oras araw-araw. Posibleng side effects ang hilo o pamamaga ng bukung-bukong. Kumonsulta sa doktor o BHU kung malala.';
+  if (/metformin/.test(q)) return 'Ang metformin ay karaniwang tumutulong kontrolin ang blood sugar. Madalas itong iniinom kasabay o pagkatapos kumain para mabawasan ang pagsakit ng tiyan. Sundin ang iyong reseta.';
+  if (/atorvastatin/.test(q)) return 'Ang atorvastatin ay tumutulong magpababa ng cholesterol. Kung may matinding pananakit o panghihina ng kalamnan, kumontak agad sa doktor.';
+  if (/nakalimot|missed|nalate|hindi.*nainom/.test(q)) return 'Sundin ang instruction sa label o tanungin ang pharmacist/BHU. Huwag mag-double dose maliban kung malinaw na sinabi ng clinician.';
+  if (/side effect|epekto|hilo|pantal|suka/.test(q)) return 'I-check ang label para sa common side effects. Kung nagpapatuloy, tawagan ang doktor, pharmacist, o BHU. Kung hirap huminga o namamaga ang mukha, tumawag sa 911.';
+  return 'Maaari kitang tulungan sa gamit ng gamot, schedule, missed dose, at general side effects. I-type ang eksaktong pangalan at dose. Para sa diagnosis o pagbabago ng reseta, kumonsulta sa doktor, pharmacist, o BHU.';
+}
+
+function AssistantScreen({ medicines, onSupport }: { medicines: Medicine[]; onSupport: () => void }) {
+  const [messages, setMessages] = useState<ChatMessage[]>([{ role: 'assistant', content: 'Kumusta! Ako si Gabay. Tanungin mo ako tungkol sa gamit, schedule, o general safety ng iyong gamot.', mode: 'local' }]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const suggestions = ['Para saan ang Amlodipine?', 'Paano kapag nakalimot ng dose?', 'Ano ang common side effects?'];
+
+  async function ask(question = input) {
+    const cleanQuestion = question.trim();
+    if (!cleanQuestion || loading) return;
+    const nextMessages: ChatMessage[] = [...messages, { role: 'user', content: cleanQuestion }];
+    setMessages(nextMessages); setInput(''); setLoading(true);
+    try {
+      const response = await fetch(ASSISTANT_API, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: nextMessages, question: cleanQuestion, medications: medicines.map(({ name, dose, time }) => ({ name, dose, time })) }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data?.answer) throw new Error('Assistant unavailable');
+      setMessages([...nextMessages, { role: 'assistant', content: data.answer, mode: data.mode === 'gemini' ? 'gemini' : 'local' }]);
+    } catch {
+      setMessages([...nextMessages, { role: 'assistant', content: offlineAssistantAnswer(cleanQuestion), mode: 'local' }]);
+    } finally { setLoading(false); }
+  }
+
+  return <KeyboardAvoidingView style={styles.assistantScreen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <ScrollView contentContainerStyle={styles.assistantPage} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <View style={styles.assistantHeader}><View style={styles.assistantMark}><Ionicons name="sparkles" size={24} color="#fff" /></View><View style={styles.listCopy}><Text style={styles.assistantTitle}>AI Gabay</Text><Text style={styles.assistantStatus}>Handang tumulong · local fallback active</Text></View></View>
+      <Text style={styles.assistantDisclaimer}>General medicine information lamang. Hindi ito kapalit ng doktor, pharmacist, o BHU.</Text>
+      <View style={styles.suggestionWrap}>{suggestions.map(item => <Pressable key={item} onPress={() => ask(item)} style={styles.suggestionChip}><Text style={styles.suggestionText}>{item}</Text></Pressable>)}</View>
+      <View style={styles.chatList}>{messages.map((message, index) => <View key={`${message.role}-${index}`} style={[styles.chatBubble, message.role === 'user' ? styles.userBubble : styles.assistantBubble]}><Text style={[styles.chatText, message.role === 'user' && styles.userChatText]}>{message.content}</Text>{message.role === 'assistant' && message.mode && <Text style={styles.responseMode}>{message.mode === 'gemini' ? 'GEMINI AI' : 'LOCAL GABAY'}</Text>}</View>)}{loading && <View style={[styles.chatBubble, styles.assistantBubble, styles.typingBubble]}><ActivityIndicator size="small" color={COLORS.brand} /><Text style={styles.typingText}>Nag-iisip si Gabay…</Text></View>}</View>
+      <Pressable onPress={onSupport} style={styles.bhuLink}><Ionicons name="heart-outline" size={17} color={COLORS.brandDark} /><Text style={styles.bhuLinkText}>Kailangan ng tao? Makipag-ugnayan sa BHU</Text></Pressable>
+    </ScrollView>
+    <View style={styles.chatComposer}><TextInput value={input} onChangeText={setInput} placeholder="Magtanong tungkol sa gamot…" placeholderTextColor="#8AADA6" style={styles.chatInput} multiline maxLength={400} /><Pressable onPress={() => ask()} disabled={!input.trim() || loading} style={[styles.sendButton, (!input.trim() || loading) && styles.disabled]}><Ionicons name="send" size={19} color="#fff" /></Pressable></View>
+  </KeyboardAvoidingView>;
 }
 
 function SupportScreen() { return <ScrollView contentContainerStyle={styles.page}><PageTitle eyebrow="BHU SUPPORT" title="Hindi ka nag-iisa." copy="Makipag-ugnayan sa inyong Barangay Health Unit para sa gabay." /><View style={styles.supportCard}><View style={styles.supportIcon}><Ionicons name="heart-outline" size={25} color={COLORS.brand} /></View><Text style={styles.supportTitle}>BHU San Isidro</Text><Text style={styles.supportCopy}>Barangay Health Center{`\n`}Bukas · 8:00 AM–5:00 PM</Text><Pressable onPress={() => Alert.alert('BHU San Isidro', '(02) 8123-4567')} style={styles.primaryButton}><Text style={styles.primaryButtonText}>Tumawag sa BHU</Text></Pressable></View><View style={[styles.supportCard, styles.emergencyCard]}><Text style={styles.supportTitle}>Emergency?</Text><Text style={styles.supportCopy}>Kung malubha ang nararamdaman, tumawag agad sa 911 o pumunta sa pinakamalapit na ospital.</Text></View></ScrollView>; }
@@ -237,6 +287,30 @@ const styles = StyleSheet.create({
   dividerLine:{flex:1,height:1,backgroundColor:COLORS.line},
   dividerText:{fontSize:10,color:'#8AADA6'},
   loginFooter:{fontSize:9,color:'#8AADA6',textAlign:'center',marginTop:20},
+  assistantScreen:{flex:1},
+  assistantPage:{paddingHorizontal:18,paddingTop:6,paddingBottom:112},
+  assistantHeader:{flexDirection:'row',alignItems:'center',gap:12,padding:17,borderRadius:20,backgroundColor:COLORS.brand},
+  assistantMark:{width:45,height:45,borderRadius:14,alignItems:'center',justifyContent:'center',backgroundColor:'rgba(255,255,255,.16)'},
+  assistantTitle:{fontSize:20,fontWeight:'700',color:'#fff'},
+  assistantStatus:{fontSize:10,color:'rgba(255,255,255,.82)',marginTop:2},
+  assistantDisclaimer:{fontSize:10,lineHeight:16,color:COLORS.muted,textAlign:'center',paddingHorizontal:16,marginTop:12},
+  suggestionWrap:{flexDirection:'row',flexWrap:'wrap',gap:7,marginTop:16},
+  suggestionChip:{paddingHorizontal:12,paddingVertical:9,borderWidth:1,borderColor:COLORS.line,borderRadius:999,backgroundColor:'#fff'},
+  suggestionText:{fontSize:10,fontWeight:'500',color:COLORS.brandDark},
+  chatList:{gap:10,marginTop:18},
+  chatBubble:{maxWidth:'88%',paddingHorizontal:14,paddingVertical:11,borderRadius:17},
+  assistantBubble:{alignSelf:'flex-start',borderWidth:1,borderColor:COLORS.line,backgroundColor:'#fff',borderTopLeftRadius:5},
+  userBubble:{alignSelf:'flex-end',backgroundColor:COLORS.brand,borderTopRightRadius:5},
+  chatText:{fontSize:12,lineHeight:19,color:COLORS.ink},
+  userChatText:{color:'#fff'},
+  responseMode:{fontSize:8,fontWeight:'700',letterSpacing:1,color:'#8AADA6',marginTop:7},
+  typingBubble:{flexDirection:'row',alignItems:'center',gap:8},
+  typingText:{fontSize:10,color:COLORS.muted},
+  bhuLink:{alignSelf:'center',flexDirection:'row',alignItems:'center',gap:7,padding:11,marginTop:18},
+  bhuLinkText:{fontSize:10,fontWeight:'500',color:COLORS.brandDark},
+  chatComposer:{position:'absolute',left:12,right:12,bottom:82,minHeight:58,flexDirection:'row',alignItems:'flex-end',gap:8,padding:7,borderWidth:1,borderColor:COLORS.line,borderRadius:18,backgroundColor:'#fff',shadowColor:COLORS.ink,shadowOpacity:.08,shadowRadius:12,shadowOffset:{width:0,height:5}},
+  chatInput:{flex:1,maxHeight:92,minHeight:42,paddingHorizontal:10,paddingVertical:10,fontSize:12,color:COLORS.ink},
+  sendButton:{width:42,height:42,borderRadius:13,alignItems:'center',justifyContent:'center',backgroundColor:COLORS.brand},
   fieldWrap:{width:'100%',height:52,borderWidth:1,borderColor:COLORS.line,borderRadius:14,paddingHorizontal:14,flexDirection:'row',alignItems:'center',gap:10,backgroundColor:'#fff'},
   fieldInput:{flex:1,minWidth:0,height:50,fontSize:14,color:COLORS.ink},
   buttonContent:{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8},
