@@ -15,10 +15,18 @@ const icons = {
 
 const app = document.querySelector('#app');
 const modalRoot = document.querySelector('#modal-root');
-const supabase = window.supabase?.createClient(
-  'https://zzuhgpzcdkigubowyxjd.supabase.co',
-  'sb_publishable_NVzpI7OVt4ulDzOLodekIg_cfhT0voF'
-);
+let supabase = null;
+
+function initSupabase() {
+  if (supabase || !window.supabase?.createClient) return;
+  supabase = window.supabase.createClient(
+    'https://zzuhgpzcdkigubowyxjd.supabase.co',
+    'sb_publishable_NVzpI7OVt4ulDzOLodekIg_cfhT0voF'
+  );
+  supabase.auth.getSession()
+    .then(({ data }) => data.session && openSession(data.session.user))
+    .catch(() => {});
+}
 
 const state = {
   role: 'Pasyente',
@@ -265,5 +273,6 @@ async function openSession(user) {
 
 async function logout() { if (supabase && !state.user?.demo) await supabase.auth.signOut(); state.user = null; state.activeView = 'home'; showLogin(); }
 
-if (supabase) supabase.auth.getSession().then(({ data }) => data.session ? openSession(data.session.user) : showLogin()).catch(showLogin);
-else showLogin();
+window.initSupabase = initSupabase;
+showLogin();
+initSupabase();
