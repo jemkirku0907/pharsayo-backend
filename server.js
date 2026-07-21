@@ -121,6 +121,44 @@ app.post('/api/assistant', async (req, res) => {
   return res.json({ answer: localMedicationAnswer(question), mode: 'local' });
 });
 
+app.post('/api/identify-medicine', async (req, res) => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return res.status(503).json({ error: 'Hindi pa naka-connect ang AI image recognition. Idagdag muna ang Gemini key sa Vercel, saka subukang mag-scan ulit.' });
+  }
+
+  const imageBase64 = String(req.body?.imageBase64 || '').replace(/^data:[^;]+;base64,/, '');
+  const mimeType = /^image\/(jpeg|png|webp|heic|heif)$/.test(String(req.body?.mimeType || '')) ? req.body.mimeType : 'image/jpeg';
+  if (!imageBase64) return res.status(400).json({ error: 'Medicine label image is required.' });
+  if (imageBase64.length > 9_000_000) return res.status(413).json({ error: 'Masyadong malaki ang larawan. Kunan ulit nang mas malapit sa label.' });
+
+  try {
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const prompt = `Read the visible text on this medicine packaging or prescription label and identify it conservatively.
+Return JSON only with: name, dosage, form, confidence (high, medium, or low), visibleText, guidance.
+Use "Hindi matukoy" as name when the printed medicine name is not clearly visible. Never identify a medicine from pill color or shape alone.
+Guidance must be concise Filipino/Taglish general information, must not prescribe or change a dose, and must tell the user to confirm against the original label or a pharmacist.`;
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }, { inlineData: { mimeType, data: imageBase64 } }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 300, responseMimeType: 'application/json' }
+      })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.error?.message || 'Vision request failed.');
+    const raw = data?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim();
+    if (!raw) throw new Error('No medicine details returned.');
+    const finding = JSON.parse(raw.replace(/^```json\s*|\s*```$/g, ''));
+    if (!finding?.name || !['high', 'medium', 'low'].includes(finding.confidence)) throw new Error('Invalid medicine result.');
+    return res.json({ finding, mode: 'gemini' });
+  } catch (error) {
+    console.error('Medicine image analysis:', error.message);
+    return res.status(502).json({ error: 'Hindi mabasa nang maayos ang label. Kunan ulit sa maliwanag na lugar at siguraduhing kita ang pangalan at dosage.' });
+  }
+});
+
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 const PORT = process.env.PORT || 3000;
