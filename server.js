@@ -1,8 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const app = express();
+const path = require('path');
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.post('/api/claude', async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -45,7 +47,7 @@ app.post('/api/claude', async (req, res) => {
   }
 });
 
-app.get('/', (req, res) => res.send('PharSayo API proxy is running (Claude backend).'));
+app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
