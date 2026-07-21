@@ -79,6 +79,7 @@ const navItems: { id: Screen; label: string; icon: IconName; activeIcon: IconNam
 ];
 
 export default function App() {
+  const { width, height } = useWindowDimensions();
   const [fontsLoaded] = useFonts({ Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold });
   const [signedIn, setSignedIn] = useState(false);
   const [name, setName] = useState('Maria Angeles');
@@ -87,15 +88,11 @@ export default function App() {
   const [medicines, setMedicines] = useState(initialMedicines);
   const [reminders, setReminders] = useState(initialReminders);
 
-  if (!fontsLoaded) {
-    return <View style={styles.loadingScreen}><ActivityIndicator size="large" color={COLORS.brand} /></View>;
-  }
-
-  if (!signedIn) {
-    return <LoginScreen role={role} setRole={setRole} onLogin={setSignedIn} onName={setName} />;
-  }
-
-  return (
+  const content = !fontsLoaded ? (
+    <View style={styles.loadingScreen}><ActivityIndicator size="large" color={COLORS.brand} /></View>
+  ) : !signedIn ? (
+    <LoginScreen role={role} setRole={setRole} onLogin={setSignedIn} onName={setName} />
+  ) : (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
       <View style={styles.appShell}>
@@ -112,11 +109,23 @@ export default function App() {
       </View>
     </SafeAreaView>
   );
+
+  if (Platform.OS === 'web' && width > 600) {
+    const previewScale = Math.min(1, (width - 48) / 390, (height - 32) / 844);
+    return (
+      <View style={styles.webStage}>
+        <View style={[styles.webDevice, { transform: [{ scale: previewScale }] }]}>{content}</View>
+      </View>
+    );
+  }
+
+  return content;
 }
 
 function LoginScreen({ role, setRole, onLogin, onName }: { role: Role; setRole: (role: Role) => void; onLogin: (value: boolean) => void; onName: (name: string) => void }) {
   const { width } = useWindowDimensions();
-  const contentWidth = Math.min(width - 44, 430);
+  const previewWidth = Platform.OS === 'web' && width > 600 ? 390 : width;
+  const contentWidth = Math.min(previewWidth - 44, 430);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [secure, setSecure] = useState(true);
@@ -271,6 +280,8 @@ function PageTitle({ eyebrow, title, copy, action, onAction }: { eyebrow: string
 function MedicineRow({ medicine }: { medicine: Medicine }) { return <View style={styles.listRow}><View style={[styles.medIcon, medicine.taken && styles.medIconDone]}><Ionicons name={medicine.taken ? 'checkmark' : 'medical-outline'} size={21} color={medicine.taken ? '#fff' : COLORS.brand} /></View><View style={styles.listCopy}><Text style={styles.listTitle}>{medicine.name}  <Text style={styles.listDose}>{medicine.dose}</Text></Text><Text style={styles.listSubtitle}>{medicine.note}</Text></View><View style={styles.rowMeta}><Text style={styles.rowTime}>{medicine.time}</Text><Text style={styles.rowStatus}>{medicine.taken ? 'Nainom' : 'Naka-iskedyul'}</Text></View></View>; }
 
 const styles = StyleSheet.create({
+  webStage:{flex:1,alignItems:'center',justifyContent:'center',overflow:'hidden',backgroundColor:'#EAF7F3'},
+  webDevice:{width:390,height:844,borderRadius:38,overflow:'hidden',backgroundColor:COLORS.bg,shadowColor:'#163A31',shadowOpacity:.16,shadowRadius:30,shadowOffset:{width:0,height:14},elevation:12},
   loadingScreen:{flex:1,alignItems:'center',justifyContent:'center',backgroundColor:COLORS.mintSoft},
   legacyHeroCard:{height:205,borderRadius:28,alignSelf:'center',alignItems:'center',justifyContent:'center',overflow:'hidden',backgroundColor:COLORS.brand,marginTop:8},
   heroBubbleTop:{position:'absolute',width:150,height:150,borderRadius:75,top:-65,right:-32,backgroundColor:'rgba(255,255,255,.08)'},
