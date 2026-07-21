@@ -68,7 +68,7 @@ function localMedicationAnswer(question = '') {
   if (/atorvastatin/.test(q)) {
     return 'Ang atorvastatin ay tumutulong magpababa ng cholesterol. Inumin ayon sa iskedyul ng reseta. Kung may matinding pananakit o panghihina ng kalamnan, lalo na may lagnat o maitim na ihi, kumontak agad sa doktor.';
   }
-  if (/nakalimot|missed|hindi.*nainom|late|nalate/.test(q)) {
+  if (/nakalim|missed|hindi.*nainom|late|nalate/.test(q)) {
     return 'Para sa nakaligtaang dose, sundin ang instruction sa medicine label o tanungin ang pharmacist/BHU. Karaniwang hindi dapat mag-double dose maliban kung malinaw na sinabi ng clinician. Sabihin ang pangalan ng gamot para sa mas angkop na general guidance.';
   }
   if (/side effect|epekto|hilo|suka|pagsusuka|pantal/.test(q)) {

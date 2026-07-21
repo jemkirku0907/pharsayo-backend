@@ -219,7 +219,7 @@ function offlineAssistantAnswer(question: string) {
   if (/amlodipine/.test(q)) return 'Ang amlodipine ay karaniwang para sa mataas na presyon. Inumin ayon sa reseta at sa parehong oras araw-araw. Posibleng side effects ang hilo o pamamaga ng bukung-bukong. Kumonsulta sa doktor o BHU kung malala.';
   if (/metformin/.test(q)) return 'Ang metformin ay karaniwang tumutulong kontrolin ang blood sugar. Madalas itong iniinom kasabay o pagkatapos kumain para mabawasan ang pagsakit ng tiyan. Sundin ang iyong reseta.';
   if (/atorvastatin/.test(q)) return 'Ang atorvastatin ay tumutulong magpababa ng cholesterol. Kung may matinding pananakit o panghihina ng kalamnan, kumontak agad sa doktor.';
-  if (/nakalimot|missed|nalate|hindi.*nainom/.test(q)) return 'Sundin ang instruction sa label o tanungin ang pharmacist/BHU. Huwag mag-double dose maliban kung malinaw na sinabi ng clinician.';
+  if (/nakalim|missed|nalate|hindi.*nainom/.test(q)) return 'Sundin ang instruction sa label o tanungin ang pharmacist/BHU. Huwag mag-double dose maliban kung malinaw na sinabi ng clinician.';
   if (/side effect|epekto|hilo|pantal|suka/.test(q)) return 'I-check ang label para sa common side effects. Kung nagpapatuloy, tawagan ang doktor, pharmacist, o BHU. Kung hirap huminga o namamaga ang mukha, tumawag sa 911.';
   return 'Maaari kitang tulungan sa gamit ng gamot, schedule, missed dose, at general side effects. I-type ang eksaktong pangalan at dose. Para sa diagnosis o pagbabago ng reseta, kumonsulta sa doktor, pharmacist, o BHU.';
 }
