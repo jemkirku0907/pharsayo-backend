@@ -4,9 +4,13 @@ const app = express();
 const path = require('path');
 const { enhancedAssistantSystemPrompt, enhancedMedicationAnswerAsync } = require('./medicine-assistant');
 const expoWebDir = path.join(__dirname, 'ios-app', 'dist');
+const marketingDir = path.join(__dirname, 'marketing');
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use('/assets/node_modules', express.static(path.join(expoWebDir, 'font-assets')));
+app.use('/site', express.static(marketingDir));
+app.get('/', (req, res) => res.sendFile(path.join(marketingDir, 'index.html')));
+app.get('/app', (req, res) => res.sendFile(path.join(expoWebDir, 'index.html')));
 app.use(express.static(expoWebDir));
 app.use(express.static(path.join(__dirname, 'public')));
 
