@@ -184,7 +184,7 @@ function LoginScreen({ role, setRole, onLogin, onName }: { role: Role; setRole: 
 
 function AppHeader({ name, onAccount, onReminders }: { name: string; onAccount: () => void; onReminders: () => void }) {
   const firstName = name.trim().split(' ')[0] || 'Maria';
-  return <View style={styles.header}><View><Text style={styles.greetingSmall}>Magandang umaga 👋</Text><Text style={styles.headerTitle}>{name}</Text></View><View style={styles.headerActions}><Pressable onPress={onReminders} accessibilityLabel="Buksan ang mga paalaala" style={styles.headerIconButton}><Ionicons name="notifications-outline" size={19} color={COLORS.muted} /></Pressable><Pressable onPress={onAccount} accessibilityLabel="Buksan ang account settings" style={styles.avatar}><Text style={styles.avatarText}>{firstName[0].toUpperCase()}</Text></Pressable></View></View>;
+  return <View style={styles.header}><View><Text style={styles.greetingSmall}>Magandang umaga</Text><Text style={styles.headerTitle}>{name}</Text></View><View style={styles.headerActions}><Pressable onPress={onReminders} accessibilityLabel="Buksan ang mga paalaala" style={styles.headerIconButton}><Ionicons name="notifications-outline" size={19} color={COLORS.muted} /></Pressable><Pressable onPress={onAccount} accessibilityLabel="Buksan ang account settings" style={styles.avatar}><Text style={styles.avatarText}>{firstName[0].toUpperCase()}</Text></Pressable></View></View>;
 }
 
 function HomeScreen({ medicines, setMedicines, onNavigate }: { medicines: Medicine[]; setMedicines: React.Dispatch<React.SetStateAction<Medicine[]>>; onNavigate: (screen: Screen) => void }) {
