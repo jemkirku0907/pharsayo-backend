@@ -8,7 +8,7 @@ import { Poppins_500Medium } from '@expo-google-fonts/poppins/500Medium';
 import { Poppins_600SemiBold } from '@expo-google-fonts/poppins/600SemiBold';
 import { Poppins_700Bold } from '@expo-google-fonts/poppins/700Bold';
 import { Poppins_800ExtraBold } from '@expo-google-fonts/poppins/800ExtraBold';
-import { useMemo, useRef, useState } from 'react';
+import { createContext, useContext, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { TextInputProps, TextProps } from 'react-native';
 import {
@@ -37,6 +37,12 @@ type Reminder = { id: number; medicine: string; time: string; enabled: boolean }
 type ChatMessage = { role: 'user' | 'assistant'; content: string; mode?: 'local' | 'gemini' };
 type ScanFinding = { name: string; dosage?: string; form?: string; confidence: 'high' | 'medium' | 'low'; visibleText?: string; guidance: string };
 type IconName = keyof typeof Ionicons.glyphMap;
+
+const LanguageContext = createContext<Language>('Tagalog');
+function useAppLanguage() {
+  const language = useContext(LanguageContext);
+  return { language, tr: (tagalog: string, english: string) => language === 'Tagalog' ? tagalog : english };
+}
 
 function Text({ style, ...props }: TextProps) {
   const weight = String(StyleSheet.flatten(style)?.fontWeight || '400');
@@ -100,7 +106,7 @@ export default function App() {
   ) : !signedIn ? (
     <LoginScreen role={role} setRole={setRole} onLogin={enterApp} onName={setName} />
   ) : (
-    <SafeAreaView style={styles.safeArea}>
+    <LanguageContext.Provider value={language}><SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
       <View style={styles.appShell}>
         {role === 'Pasyente' && !['account', 'scan'].includes(screen) && <AppHeader name={name} onAccount={() => setScreen('account')} onReminders={() => setScreen('reminders')} />}
@@ -125,7 +131,7 @@ export default function App() {
         {role === 'BHU Staff' && !['account', 'prescription'].includes(screen) && <StaffBottomNav active={screen} onChange={setScreen} />}
         {role === 'Admin' && screen !== 'account' && <AdminBottomNav active={screen} onChange={setScreen} />}
       </View>
-    </SafeAreaView>
+    </SafeAreaView></LanguageContext.Provider>
   );
 
   if (Platform.OS === 'web') {
@@ -200,10 +206,12 @@ function LoginScreen({ role, setRole, onLogin, onName }: { role: Role; setRole: 
 
 function AppHeader({ name, onAccount, onReminders }: { name: string; onAccount: () => void; onReminders: () => void }) {
   const firstName = name.trim().split(' ')[0] || 'Maria';
-  return <View style={styles.header}><View><Text style={styles.greetingSmall}>Magandang umaga</Text><Text style={styles.headerTitle}>{name}</Text></View><View style={styles.headerActions}><Pressable onPress={onReminders} accessibilityLabel="Buksan ang mga paalaala" style={styles.headerIconButton}><Ionicons name="notifications-outline" size={19} color={COLORS.muted} /></Pressable><Pressable onPress={onAccount} accessibilityLabel="Buksan ang account settings" style={styles.avatar}><Text style={styles.avatarText}>{firstName[0].toUpperCase()}</Text></Pressable></View></View>;
+  const { tr } = useAppLanguage();
+  return <View style={styles.header}><View><Text style={styles.greetingSmall}>{tr('Magandang umaga', 'Good morning')}</Text><Text style={styles.headerTitle}>{name}</Text></View><View style={styles.headerActions}><Pressable onPress={onReminders} accessibilityLabel={tr('Buksan ang mga paalaala', 'Open reminders')} style={styles.headerIconButton}><Ionicons name="notifications-outline" size={19} color={COLORS.muted} /></Pressable><Pressable onPress={onAccount} accessibilityLabel={tr('Buksan ang account settings', 'Open account settings')} style={styles.avatar}><Text style={styles.avatarText}>{firstName[0].toUpperCase()}</Text></Pressable></View></View>;
 }
 
 function HomeScreen({ medicines, setMedicines, onNavigate }: { medicines: Medicine[]; setMedicines: React.Dispatch<React.SetStateAction<Medicine[]>>; onNavigate: (screen: Screen) => void }) {
+  const { tr } = useAppLanguage();
   const next = medicines.find(item => !item.taken) || medicines[0];
   function takeDose() { if (!next) return; setMedicines(items => items.map(item => item.id === next.id ? { ...item, taken: true } : item)); Alert.alert('Naitala na', 'Magaling! Naitala ang pag-inom ng gamot.'); }
   const categories: { label: string; detail: string; icon: IconName; tone: string; target: Screen }[] = [
@@ -213,25 +221,27 @@ function HomeScreen({ medicines, setMedicines, onNavigate }: { medicines: Medici
     { label: 'I-scan Gamot', detail: 'Camera scanner', icon: 'camera-outline', tone: '#FDEAEA', target: 'scan' },
   ];
   return <ScrollView contentContainerStyle={styles.legacyHomePage} showsVerticalScrollIndicator={false}>
-    <View style={styles.legacyScanBanner}><View style={styles.heroBubbleTop} /><View style={styles.homeBubbleBottom} /><Text style={styles.legacyBannerLabel}>Tandaan ang iyong kalusugan</Text><Text style={styles.legacyBannerTitle}>I-scan ang gamot para{`\n`}malaman ang tamang gabay</Text><Pressable onPress={() => onNavigate('scan')} style={styles.legacyBannerButton}><Ionicons name="scan-outline" size={16} color={COLORS.brand} /><Text style={styles.legacyBannerButtonText}>I-scan ngayon</Text></Pressable></View>
-    {next && <View style={styles.legacyReminder}><View style={styles.reminderIcon}><Ionicons name="time-outline" size={24} color="#fff" /></View><View style={styles.listCopy}><Text style={styles.reminderTitle}>Oras na para sa gamot mo!</Text><Text style={styles.reminderSub}>{next.name} {next.dose} · {next.time}</Text></View><Pressable onPress={takeDose} style={styles.reminderButton}><Text style={styles.reminderButtonText}>Kinuha</Text></Pressable></View>}
-    <View style={styles.legacySectionRow}><Text style={styles.legacySectionTitle}>Kategorya ng Gamot</Text><Pressable onPress={() => onNavigate('medicines')}><Text style={styles.textAction}>Lahat</Text></Pressable></View>
+    <View style={styles.legacyScanBanner}><View style={styles.heroBubbleTop} /><View style={styles.homeBubbleBottom} /><Text style={styles.legacyBannerLabel}>{tr('Tandaan ang iyong kalusugan', 'Take care of your health')}</Text><Text style={styles.legacyBannerTitle}>{tr(`I-scan ang gamot para\nmalaman ang tamang gabay`, `Scan your medicine for\nthe right guidance`)}</Text><Pressable onPress={() => onNavigate('scan')} style={styles.legacyBannerButton}><Ionicons name="scan-outline" size={16} color={COLORS.brand} /><Text style={styles.legacyBannerButtonText}>{tr('I-scan ngayon', 'Scan now')}</Text></Pressable></View>
+    {next && <View style={styles.legacyReminder}><View style={styles.reminderIcon}><Ionicons name="time-outline" size={24} color="#fff" /></View><View style={styles.listCopy}><Text style={styles.reminderTitle}>{tr('Oras na para sa gamot mo!', 'Time to take your medicine!')}</Text><Text style={styles.reminderSub}>{next.name} {next.dose} · {next.time}</Text></View><Pressable onPress={takeDose} style={styles.reminderButton}><Text style={styles.reminderButtonText}>{tr('Kinuha', 'Taken')}</Text></Pressable></View>}
+    <View style={styles.legacySectionRow}><Text style={styles.legacySectionTitle}>{tr('Kategorya ng Gamot', 'Medicine Categories')}</Text><Pressable onPress={() => onNavigate('medicines')}><Text style={styles.textAction}>{tr('Lahat', 'View all')}</Text></Pressable></View>
     <View style={styles.categoryGrid}>{categories.map(item => <Pressable key={item.label} onPress={() => onNavigate(item.target)} style={styles.categoryCard}><View style={[styles.categoryIcon, { backgroundColor: item.tone }]}><Ionicons name={item.icon} size={23} color={item.label === 'Bitamina' ? '#F6A623' : item.label === 'I-scan Gamot' ? COLORS.danger : COLORS.brand} /></View><Text style={styles.categoryName}>{item.label}</Text><Text style={styles.categoryCount}>{item.detail}</Text></Pressable>)}</View>
-    <View style={styles.legacySectionRow}><Text style={styles.legacySectionTitle}>Iskedyul ngayon</Text><Pressable onPress={() => onNavigate('medicines')}><Text style={styles.textAction}>Tingnan lahat</Text></Pressable></View>
+    <View style={styles.legacySectionRow}><Text style={styles.legacySectionTitle}>{tr('Iskedyul ngayon', `Today's Schedule`)}</Text><Pressable onPress={() => onNavigate('medicines')}><Text style={styles.textAction}>{tr('Tingnan lahat', 'View all')}</Text></Pressable></View>
     <View style={styles.homeMedicineList}>{medicines.slice(0, 3).map(item => <MedicineRow key={item.id} medicine={item} />)}</View>
   </ScrollView>;
 }
 
 function MedicinesScreen({ medicines, setMedicines }: { medicines: Medicine[]; setMedicines: React.Dispatch<React.SetStateAction<Medicine[]>> }) {
+  const { tr } = useAppLanguage();
   const [modalVisible, setModalVisible] = useState(false);
   const [name, setName] = useState(''); const [dose, setDose] = useState(''); const [time, setTime] = useState('');
   function addMedicine() { if (!name || !dose || !time) return Alert.alert('Kulang ang detalye'); setMedicines(items => [...items, { id: Date.now(), name, dose, time, note: 'Ayon sa reseta', taken: false }]); setModalVisible(false); setName(''); setDose(''); setTime(''); }
-  const medicineList = <ScrollView contentContainerStyle={styles.page}><PageTitle eyebrow="MEDICATION LIST" title="Mga gamot ko" copy="Lahat ng aktibong gamot at iskedyul." action onAction={() => setModalVisible(true)} />{medicines.map(item => <View key={item.id} style={styles.listRow}><View style={styles.medIcon}><Ionicons name="medical-outline" size={21} color={COLORS.brand} /></View><View style={styles.listCopy}><Text style={styles.listTitle}>{item.name}  <Text style={styles.listDose}>{item.dose}</Text></Text><Text style={styles.listSubtitle}>{item.note} · {item.time}</Text></View><Pressable onPress={() => setMedicines(items => items.filter(med => med.id !== item.id))} style={styles.iconButton}><Ionicons name="close" size={20} color="#9AACA6" /></Pressable></View>)}</ScrollView>;
-  const formSheet = <View style={styles.modalSheet}><View style={styles.modalHandle} /><Text style={styles.modalTitle}>Magdagdag ng gamot</Text><Text style={styles.label}>Pangalan</Text><TextInput value={name} onChangeText={setName} placeholder="hal. Losartan" style={styles.input} /><Text style={styles.label}>Dosage</Text><TextInput value={dose} onChangeText={setDose} placeholder="hal. 50mg" style={styles.input} /><Text style={styles.label}>Oras</Text><TextInput value={time} onChangeText={setTime} placeholder="hal. 8:00 AM" style={styles.input} /><Pressable onPress={addMedicine} style={styles.primaryButton}><Text style={styles.primaryButtonText}>Idagdag ang gamot</Text></Pressable><Pressable onPress={() => setModalVisible(false)} style={styles.modalCancel}><Text style={styles.modalCancelText}>Kanselahin</Text></Pressable></View>;
+  const medicineList = <ScrollView contentContainerStyle={styles.page}><PageTitle eyebrow="MEDICATION LIST" title={tr('Mga gamot ko', 'My Medicines')} copy={tr('Lahat ng aktibong gamot at iskedyul.', 'All active medicines and schedules.')} action onAction={() => setModalVisible(true)} />{medicines.map(item => <View key={item.id} style={styles.listRow}><View style={styles.medIcon}><Ionicons name="medical-outline" size={21} color={COLORS.brand} /></View><View style={styles.listCopy}><Text style={styles.listTitle}>{item.name}  <Text style={styles.listDose}>{item.dose}</Text></Text><Text style={styles.listSubtitle}>{item.note} · {item.time}</Text></View><Pressable onPress={() => setMedicines(items => items.filter(med => med.id !== item.id))} style={styles.iconButton}><Ionicons name="close" size={20} color="#9AACA6" /></Pressable></View>)}</ScrollView>;
+  const formSheet = <View style={styles.modalSheet}><View style={styles.modalHandle} /><Text style={styles.modalTitle}>{tr('Magdagdag ng gamot', 'Add Medicine')}</Text><Text style={styles.label}>{tr('Pangalan', 'Name')}</Text><TextInput value={name} onChangeText={setName} placeholder={tr('hal. Losartan', 'e.g. Losartan')} style={styles.input} /><Text style={styles.label}>Dosage</Text><TextInput value={dose} onChangeText={setDose} placeholder={tr('hal. 50mg', 'e.g. 50mg')} style={styles.input} /><Text style={styles.label}>{tr('Oras', 'Time')}</Text><TextInput value={time} onChangeText={setTime} placeholder={tr('hal. 8:00 AM', 'e.g. 8:00 AM')} style={styles.input} /><Pressable onPress={addMedicine} style={styles.primaryButton}><Text style={styles.primaryButtonText}>{tr('Idagdag ang gamot', 'Add Medicine')}</Text></Pressable><Pressable onPress={() => setModalVisible(false)} style={styles.modalCancel}><Text style={styles.modalCancelText}>{tr('Kanselahin', 'Cancel')}</Text></Pressable></View>;
   return <>{medicineList}{Platform.OS === 'web' ? modalVisible && <View style={styles.inlineModalBackdrop}>{formSheet}</View> : <Modal transparent visible={modalVisible} animationType="slide" onRequestClose={() => setModalVisible(false)}><View style={styles.modalBackdrop}>{formSheet}</View></Modal>}</>;
 }
 
 function ScannerScreen({ onAddMedicine }: { onAddMedicine: (medicine: Medicine) => void }) {
+  const { tr } = useAppLanguage();
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [photo, setPhoto] = useState<string | null>(null);
@@ -297,11 +307,11 @@ function ScannerScreen({ onAddMedicine }: { onAddMedicine: (medicine: Medicine) 
     Alert.alert('Idinagdag sa listahan', `${finding.name} ay naidagdag. I-check ang dosage at schedule ayon sa reseta.`);
   }
 
-  return <ScrollView contentContainerStyle={[styles.page, styles.scanPage, styles.scanLayout]} showsVerticalScrollIndicator={false}><PageTitle eyebrow="MEDICINE SCANNER" title="Kilalanin ang gamot" copy="Kunan ng malinaw na larawan ng pangalan at dosage sa label." />
+  return <ScrollView contentContainerStyle={[styles.page, styles.scanPage, styles.scanLayout]} showsVerticalScrollIndicator={false}><PageTitle eyebrow="MEDICINE SCANNER" title={tr('Kilalanin ang gamot', 'Identify Medicine')} copy={tr('Kunan ng malinaw na larawan ng pangalan at dosage sa label.', 'Take a clear photo of the medicine name and dosage on the label.')} />
     <View style={styles.scannerFrame}>{cameraActive ? <><CameraView ref={cameraRef} style={styles.liveCamera} facing={cameraFacing} mirror={cameraFacing === 'front'} onCameraReady={() => setCameraReady(true)} onMountError={() => { setCameraActive(false); setScanError('Hindi ma-start ang camera. I-check ang browser camera permission at subukan ulit.'); }} /><Pressable onPress={() => { setCameraReady(false); setCameraFacing(current => current === 'back' ? 'front' : 'back'); }} accessibilityLabel={cameraFacing === 'back' ? 'Gamitin ang front camera' : 'Gamitin ang back camera'} style={styles.cameraFlipButton}><Ionicons name="camera-reverse-outline" size={21} color="#fff" /></Pressable></> : photo ? <Image source={{ uri: photo }} style={styles.scannedImage} /> : <><Ionicons name="camera-outline" size={58} color={COLORS.brand} /><Text style={styles.scanHint}>Ilagay ang medicine label sa frame</Text></>}<View pointerEvents="none" style={[styles.corner, styles.cornerTL]} /><View pointerEvents="none" style={[styles.corner, styles.cornerTR]} /><View pointerEvents="none" style={[styles.corner, styles.cornerBL]} /><View pointerEvents="none" style={[styles.corner, styles.cornerBR]} /></View>
-    <Text style={[styles.scanCopy, styles.scannerHelper]}>{cameraActive ? 'Itapat ang printed medicine name at dosage sa loob ng frame.' : photo ? 'I-tap ang “Kilalanin ang gamot” para basahin ng AI ang label.' : 'Hindi sapat ang itsura o kulay ng tableta—dapat kita ang printed label.'}</Text>
-    <Pressable onPress={cameraActive ? captureLabel : openCamera} disabled={cameraActive && !cameraReady} style={[styles.primaryButton, cameraActive && !cameraReady && styles.disabled]}><View style={styles.buttonContent}><Ionicons name={cameraActive ? 'radio-button-on' : 'camera'} size={18} color="#fff" /><Text style={styles.primaryButtonText}>{cameraActive ? cameraReady ? 'Kunan ang label' : 'Binubuksan ang camera…' : photo ? 'Kunan ulit' : 'Buksan ang camera'}</Text></View></Pressable>
-    {!cameraActive && <Pressable onPress={attachImage} style={styles.secondaryButton}><View style={styles.buttonContent}><Ionicons name="attach-outline" size={18} color={COLORS.brand} /><Text style={styles.secondaryButtonText}>Mag-attach ng larawan</Text></View></Pressable>}
+    <Text style={[styles.scanCopy, styles.scannerHelper]}>{cameraActive ? tr('Itapat ang printed medicine name at dosage sa loob ng frame.', 'Place the printed medicine name and dosage inside the frame.') : photo ? tr('I-tap ang “Kilalanin ang gamot” para basahin ng AI ang label.', 'Tap “Identify Medicine” to let AI read the label.') : tr('Hindi sapat ang itsura o kulay ng tableta—dapat kita ang printed label.', 'The pill appearance alone is not enough—the printed label must be visible.')}</Text>
+    <Pressable onPress={cameraActive ? captureLabel : openCamera} disabled={cameraActive && !cameraReady} style={[styles.primaryButton, cameraActive && !cameraReady && styles.disabled]}><View style={styles.buttonContent}><Ionicons name={cameraActive ? 'radio-button-on' : 'camera'} size={18} color="#fff" /><Text style={styles.primaryButtonText}>{cameraActive ? cameraReady ? tr('Kunan ang label', 'Capture Label') : tr('Binubuksan ang camera…', 'Opening camera…') : photo ? tr('Kunan ulit', 'Retake Photo') : tr('Buksan ang camera', 'Open Camera')}</Text></View></Pressable>
+    {!cameraActive && <Pressable onPress={attachImage} style={styles.secondaryButton}><View style={styles.buttonContent}><Ionicons name="attach-outline" size={18} color={COLORS.brand} /><Text style={styles.secondaryButtonText}>{tr('Mag-attach ng larawan', 'Attach Image')}</Text></View></Pressable>}
     {photo && <Pressable onPress={analyzePhoto} disabled={analyzing} style={[styles.secondaryButton, analyzing && styles.disabled]}>{analyzing ? <View style={styles.buttonContent}><ActivityIndicator size="small" color={COLORS.brand} /><Text style={styles.secondaryButtonText}>Binabasa ang label…</Text></View> : <View style={styles.buttonContent}><Ionicons name="sparkles" size={17} color={COLORS.brand} /><Text style={styles.secondaryButtonText}>Kilalanin ang gamot</Text></View>}</Pressable>}
     {!!scanError && <View style={styles.scanError}><Ionicons name="information-circle-outline" size={20} color={COLORS.danger} /><Text style={styles.scanErrorText}>{scanError}</Text></View>}
     {finding && <View style={styles.scanResult}><View style={styles.scanResultTop}><View style={styles.scanResultIcon}><Ionicons name="medical" size={24} color={COLORS.brand} /></View><View style={styles.listCopy}><Text style={styles.smallEyebrow}>POSIBLENG MATCH · {finding.confidence.toUpperCase()}</Text><Text style={styles.scanResultName}>{finding.name}</Text><Text style={styles.listSubtitle}>{[finding.dosage, finding.form].filter(Boolean).join(' · ')}</Text></View></View>{!!finding.visibleText && <Text style={styles.visibleText}>Nabasa sa label: {finding.visibleText}</Text>}<Text style={styles.scanResultGuidance}>{finding.guidance}</Text><Pressable onPress={addFinding} style={styles.resultButton}><Text style={styles.primaryButtonText}>Idagdag sa mga gamot ko</Text></Pressable><Text style={styles.scanSafety}>Kumpirmahin palagi sa original packaging o pharmacist bago inumin.</Text></View>}
@@ -309,12 +319,19 @@ function ScannerScreen({ onAddMedicine }: { onAddMedicine: (medicine: Medicine) 
 }
 
 function RemindersScreen({ reminders, setReminders, medicines }: { reminders: Reminder[]; setReminders: React.Dispatch<React.SetStateAction<Reminder[]>>; medicines: Medicine[] }) {
+  const { tr } = useAppLanguage();
   const enabledCount = useMemo(() => reminders.filter(item => item.enabled).length, [reminders]);
-  return <ScrollView contentContainerStyle={styles.page}><PageTitle eyebrow="NOTIFICATIONS" title="Mga paalaala" copy={`${enabledCount} reminder ang kasalukuyang naka-on.`} action onAction={() => { const med = medicines[0]; if (!med) return Alert.alert('Magdagdag muna ng gamot'); setReminders(items => [...items, { id: Date.now(), medicine: med.name, time: med.time, enabled: true }]); }} />{reminders.map(item => <View key={item.id} style={styles.listRow}><View style={styles.timeBadge}><Text style={styles.timeText}>{item.time}</Text></View><View style={styles.listCopy}><Text style={styles.listTitle}>{item.medicine}</Text><Text style={styles.listSubtitle}>Daily medication reminder</Text></View><Switch value={item.enabled} onValueChange={enabled => setReminders(items => items.map(reminder => reminder.id === item.id ? { ...reminder, enabled } : reminder))} trackColor={{ false: '#DCE6E2', true: '#70CBB3' }} thumbColor={item.enabled ? COLORS.brand : '#fff'} /></View>)}</ScrollView>;
+  return <ScrollView contentContainerStyle={styles.page}><PageTitle eyebrow="NOTIFICATIONS" title={tr('Mga paalaala', 'Reminders')} copy={tr(`${enabledCount} reminder ang kasalukuyang naka-on.`, `${enabledCount} reminder${enabledCount === 1 ? '' : 's'} currently on.`)} action onAction={() => { const med = medicines[0]; if (!med) return Alert.alert(tr('Magdagdag muna ng gamot', 'Add a medicine first')); setReminders(items => [...items, { id: Date.now(), medicine: med.name, time: med.time, enabled: true }]); }} />{reminders.map(item => <View key={item.id} style={styles.listRow}><View style={styles.timeBadge}><Text style={styles.timeText}>{item.time}</Text></View><View style={styles.listCopy}><Text style={styles.listTitle}>{item.medicine}</Text><Text style={styles.listSubtitle}>{tr('Araw-araw na paalala sa gamot', 'Daily medication reminder')}</Text></View><Switch value={item.enabled} onValueChange={enabled => setReminders(items => items.map(reminder => reminder.id === item.id ? { ...reminder, enabled } : reminder))} trackColor={{ false: '#DCE6E2', true: '#70CBB3' }} thumbColor={item.enabled ? COLORS.brand : '#fff'} /></View>)}</ScrollView>;
 }
 
-function offlineAssistantAnswer(question: string) {
+function offlineAssistantAnswer(question: string, language: Language = 'Tagalog') {
   const q = question.toLowerCase();
+  if (language === 'English') {
+    if (/difficulty.*breath|chest pain|fainted|overdose|allergic|swollen.*face|emergency/.test(q)) return 'This may be an emergency. Call 911 or go to the nearest emergency room immediately.';
+    if (/missed|late|forgot/.test(q)) return 'Follow the instructions on the label or ask your pharmacist/BHU. Do not double the dose unless a clinician clearly advised it.';
+    if (/side effect|dizzy|rash|vomit/.test(q)) return 'Check the label for common side effects. Contact your doctor, pharmacist, or BHU if they continue. Call 911 for breathing difficulty or facial swelling.';
+    return 'I can help with medicine use, schedules, missed doses, and general side effects. Enter the exact medicine name and dose. Consult a doctor, pharmacist, or BHU for diagnosis or prescription changes.';
+  }
   if (/hirap.*(?:hinga|huminga)|sakit.*dibdib|chest pain|nahimatay|overdose|allergic|(?:pamamaga|namamaga).*mukha|emergency/.test(q)) return 'Maaaring emergency ito. Tumawag agad sa 911 o pumunta sa pinakamalapit na emergency room.';
   if (/amlodipine/.test(q)) return 'Ang amlodipine ay karaniwang para sa mataas na presyon. Inumin ayon sa reseta at sa parehong oras araw-araw. Posibleng side effects ang hilo o pamamaga ng bukung-bukong. Kumonsulta sa doktor o BHU kung malala.';
   if (/metformin/.test(q)) return 'Ang metformin ay karaniwang tumutulong kontrolin ang blood sugar. Madalas itong iniinom kasabay o pagkatapos kumain para mabawasan ang pagsakit ng tiyan. Sundin ang iyong reseta.';
@@ -325,10 +342,11 @@ function offlineAssistantAnswer(question: string) {
 }
 
 function AssistantScreen({ medicines, onSupport }: { medicines: Medicine[]; onSupport: () => void }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([{ role: 'assistant', content: 'Kumusta! Ako si Gabay. Tanungin mo ako tungkol sa gamit, schedule, o general safety ng iyong gamot.', mode: 'local' }]);
+  const { language, tr } = useAppLanguage();
+  const [messages, setMessages] = useState<ChatMessage[]>([{ role: 'assistant', content: tr('Kumusta! Ako si Gabay. Tanungin mo ako tungkol sa gamit, schedule, o general safety ng iyong gamot.', 'Hello! I am Gabay. Ask me about medicine use, schedules, or general safety.'), mode: 'local' }]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const suggestions = ['Para saan ang Amlodipine?', 'Paano kapag nakalimot ng dose?', 'Ano ang common side effects?'];
+  const suggestions = language === 'Tagalog' ? ['Para saan ang Amlodipine?', 'Paano kapag nakalimot ng dose?', 'Ano ang common side effects?'] : ['What is Amlodipine for?', 'What if I miss a dose?', 'What are common side effects?'];
 
   async function ask(question = input) {
     const cleanQuestion = question.trim();
@@ -344,23 +362,23 @@ function AssistantScreen({ medicines, onSupport }: { medicines: Medicine[]; onSu
       if (!response.ok || !data?.answer) throw new Error('Assistant unavailable');
       setMessages([...nextMessages, { role: 'assistant', content: data.answer, mode: data.mode === 'gemini' ? 'gemini' : 'local' }]);
     } catch {
-      setMessages([...nextMessages, { role: 'assistant', content: offlineAssistantAnswer(cleanQuestion), mode: 'local' }]);
+      setMessages([...nextMessages, { role: 'assistant', content: offlineAssistantAnswer(cleanQuestion, language), mode: 'local' }]);
     } finally { setLoading(false); }
   }
 
   return <KeyboardAvoidingView style={styles.assistantScreen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView contentContainerStyle={styles.assistantPage} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-      <View style={styles.assistantHeader}><View style={styles.assistantMark}><Ionicons name="sparkles" size={24} color="#fff" /></View><View style={styles.listCopy}><Text style={styles.assistantTitle}>AI Gabay</Text><Text style={styles.assistantStatus}>Handang tumulong · local fallback active</Text></View></View>
-      <Text style={styles.assistantDisclaimer}>General medicine information lamang. Hindi ito kapalit ng doktor, pharmacist, o BHU.</Text>
+      <View style={styles.assistantHeader}><View style={styles.assistantMark}><Ionicons name="sparkles" size={24} color="#fff" /></View><View style={styles.listCopy}><Text style={styles.assistantTitle}>{tr('AI Gabay', 'AI Guide')}</Text><Text style={styles.assistantStatus}>{tr('Handang tumulong · local fallback active', 'Ready to help · local fallback active')}</Text></View></View>
+      <Text style={styles.assistantDisclaimer}>{tr('General medicine information lamang. Hindi ito kapalit ng doktor, pharmacist, o BHU.', 'General medicine information only. This does not replace a doctor, pharmacist, or BHU.')}</Text>
       <View style={styles.suggestionWrap}>{suggestions.map(item => <Pressable key={item} onPress={() => ask(item)} style={styles.suggestionChip}><Text style={styles.suggestionText}>{item}</Text></Pressable>)}</View>
       <View style={styles.chatList}>{messages.map((message, index) => <View key={`${message.role}-${index}`} style={[styles.chatBubble, message.role === 'user' ? styles.userBubble : styles.assistantBubble]}><Text style={[styles.chatText, message.role === 'user' && styles.userChatText]}>{message.content}</Text>{message.role === 'assistant' && message.mode && <Text style={styles.responseMode}>{message.mode === 'gemini' ? 'GEMINI AI' : 'LOCAL GABAY'}</Text>}</View>)}{loading && <View style={[styles.chatBubble, styles.assistantBubble, styles.typingBubble]}><ActivityIndicator size="small" color={COLORS.brand} /><Text style={styles.typingText}>Nag-iisip si Gabay…</Text></View>}</View>
-      <Pressable onPress={onSupport} style={styles.bhuLink}><Ionicons name="heart-outline" size={17} color={COLORS.brandDark} /><Text style={styles.bhuLinkText}>Kailangan ng tao? Makipag-ugnayan sa BHU</Text></Pressable>
+      <Pressable onPress={onSupport} style={styles.bhuLink}><Ionicons name="heart-outline" size={17} color={COLORS.brandDark} /><Text style={styles.bhuLinkText}>{tr('Kailangan ng tao? Makipag-ugnayan sa BHU', 'Need human help? Contact the BHU')}</Text></Pressable>
     </ScrollView>
-    <View style={styles.chatComposer}><TextInput value={input} onChangeText={setInput} placeholder="Magtanong tungkol sa gamot…" placeholderTextColor="#8AADA6" style={styles.chatInput} multiline maxLength={400} /><Pressable onPress={() => ask()} disabled={!input.trim() || loading} style={[styles.sendButton, (!input.trim() || loading) && styles.disabled]}><Ionicons name="send" size={19} color="#fff" /></Pressable></View>
+    <View style={styles.chatComposer}><TextInput value={input} onChangeText={setInput} placeholder={tr('Magtanong tungkol sa gamot…', 'Ask about a medicine…')} placeholderTextColor="#8AADA6" style={styles.chatInput} multiline maxLength={400} /><Pressable onPress={() => ask()} disabled={!input.trim() || loading} style={[styles.sendButton, (!input.trim() || loading) && styles.disabled]}><Ionicons name="send" size={19} color="#fff" /></Pressable></View>
   </KeyboardAvoidingView>;
 }
 
-function SupportScreen() { return <ScrollView contentContainerStyle={styles.page}><PageTitle eyebrow="BHU SUPPORT" title="Hindi ka nag-iisa." copy="Makipag-ugnayan sa inyong Barangay Health Unit para sa gabay." /><View style={styles.supportCard}><View style={styles.supportIcon}><Ionicons name="heart-outline" size={25} color={COLORS.brand} /></View><Text style={styles.supportTitle}>BHU San Isidro</Text><Text style={styles.supportCopy}>Barangay Health Center{`\n`}Bukas · 8:00 AM–5:00 PM</Text><Pressable onPress={() => Alert.alert('BHU San Isidro', '(02) 8123-4567')} style={styles.primaryButton}><Text style={styles.primaryButtonText}>Tumawag sa BHU</Text></Pressable></View><View style={[styles.supportCard, styles.emergencyCard]}><Text style={styles.supportTitle}>Emergency?</Text><Text style={styles.supportCopy}>Kung malubha ang nararamdaman, tumawag agad sa 911 o pumunta sa pinakamalapit na ospital.</Text></View></ScrollView>; }
+function SupportScreen() { const { tr } = useAppLanguage(); return <ScrollView contentContainerStyle={styles.page}><PageTitle eyebrow="BHU SUPPORT" title={tr('Hindi ka nag-iisa.', 'You are not alone.')} copy={tr('Makipag-ugnayan sa inyong Barangay Health Unit para sa gabay.', 'Contact your Barangay Health Unit for guidance.')} /><View style={styles.supportCard}><View style={styles.supportIcon}><Ionicons name="heart-outline" size={25} color={COLORS.brand} /></View><Text style={styles.supportTitle}>BHU San Isidro</Text><Text style={styles.supportCopy}>{tr(`Barangay Health Center\nBukas · 8:00 AM–5:00 PM`, `Barangay Health Center\nOpen · 8:00 AM–5:00 PM`)}</Text><Pressable onPress={() => Alert.alert('BHU San Isidro', '(02) 8123-4567')} style={styles.primaryButton}><Text style={styles.primaryButtonText}>{tr('Tumawag sa BHU', 'Call the BHU')}</Text></Pressable></View><View style={[styles.supportCard, styles.emergencyCard]}><Text style={styles.supportTitle}>Emergency?</Text><Text style={styles.supportCopy}>{tr('Kung malubha ang nararamdaman, tumawag agad sa 911 o pumunta sa pinakamalapit na ospital.', 'If your symptoms are severe, call 911 or go to the nearest hospital immediately.')}</Text></View></ScrollView>; }
 
 const staffPatients = [
   { initials: 'JR', name: 'Jose Reyes, 72', meds: 'Amlodipine · Metformin', adherence: 42, tone: 'danger' as const },
@@ -438,7 +456,7 @@ function ProfileRow({ icon, label, value, danger, accent }: { icon: IconName; la
 function AppHeaderPlaceholder() { return null; }
 void AppHeaderPlaceholder;
 
-function BottomNav({ active, onChange }: { active: Screen; onChange: (screen: Screen) => void }) { return <View style={styles.bottomNav}>{navItems.map(item => <Pressable key={item.id} onPress={() => onChange(item.id)} style={styles.navItem}><View style={[styles.navIconWrap, active === item.id && styles.navIconWrapActive]}><Ionicons name={active === item.id ? item.activeIcon : item.icon} size={20} color={active === item.id ? COLORS.brand : '#7EA39A'} /></View><Text style={[styles.navLabel, active === item.id && styles.navLabelActive]}>{item.label}</Text></Pressable>)}</View>; }
+function BottomNav({ active, onChange }: { active: Screen; onChange: (screen: Screen) => void }) { const { language } = useAppLanguage(); const englishLabels: Partial<Record<Screen, string>> = { home: 'Home', medicines: 'Medicines', scan: 'Scan', assistant: 'AI Help', account: 'Account' }; return <View style={styles.bottomNav}>{navItems.map(item => <Pressable key={item.id} onPress={() => onChange(item.id)} style={styles.navItem}><View style={[styles.navIconWrap, active === item.id && styles.navIconWrapActive]}><Ionicons name={active === item.id ? item.activeIcon : item.icon} size={20} color={active === item.id ? COLORS.brand : '#7EA39A'} /></View><Text style={[styles.navLabel, active === item.id && styles.navLabelActive]}>{language === 'English' ? englishLabels[item.id] : item.label}</Text></Pressable>)}</View>; }
 function RoleBottomNav({ items, active, onChange }: { items: { id: Screen; label: string; icon: IconName }[]; active: Screen; onChange: (screen: Screen) => void }) { return <View style={styles.bottomNav}>{items.map(item => <Pressable key={item.id} onPress={() => onChange(item.id)} style={styles.navItem}><View style={[styles.navIconWrap, active === item.id && styles.navIconWrapActive]}><Ionicons name={item.icon} size={20} color={active === item.id ? COLORS.brand : '#7EA39A'} /></View><Text style={[styles.navLabel, active === item.id && styles.navLabelActive]}>{item.label}</Text></Pressable>)}</View>; }
 function StaffBottomNav({ active, onChange }: { active: Screen; onChange: (screen: Screen) => void }) { return <RoleBottomNav active={active} onChange={onChange} items={[{ id: 'staff-dashboard', label: 'Dashboard', icon: 'grid-outline' }, { id: 'staff-patients', label: 'Patients', icon: 'people-outline' }, { id: 'prescription', label: 'Meds', icon: 'medical-outline' }, { id: 'reports', label: 'Reports', icon: 'bar-chart-outline' }, { id: 'account', label: 'Account', icon: 'person-outline' }]} />; }
 function AdminBottomNav({ active, onChange }: { active: Screen; onChange: (screen: Screen) => void }) { return <RoleBottomNav active={active} onChange={onChange} items={[{ id: 'admin-dashboard', label: 'Dashboard', icon: 'grid-outline' }, { id: 'admin-users', label: 'Users', icon: 'people-outline' }, { id: 'admin-bhus', label: 'BHUs', icon: 'business-outline' }, { id: 'reports', label: 'Reports', icon: 'bar-chart-outline' }, { id: 'account', label: 'Account', icon: 'person-outline' }]} />; }
