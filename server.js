@@ -5,6 +5,7 @@ const path = require('path');
 const expoWebDir = path.join(__dirname, 'ios-app', 'dist');
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+app.use('/assets/node_modules', express.static(path.join(expoWebDir, 'font-assets')));
 app.use(express.static(expoWebDir));
 app.use(express.static(path.join(__dirname, 'public')));
 
