@@ -31,6 +31,7 @@ import {
 
 type Screen = 'home' | 'medicines' | 'scan' | 'reminders' | 'assistant' | 'support' | 'account' | 'staff-dashboard' | 'staff-patients' | 'prescription' | 'admin-dashboard' | 'admin-users' | 'admin-bhus' | 'reports';
 type Role = 'Pasyente' | 'BHU Staff' | 'Admin';
+type Language = 'Tagalog' | 'English';
 type Medicine = { id: number; name: string; dose: string; time: string; note: string; taken: boolean };
 type Reminder = { id: number; medicine: string; time: string; enabled: boolean };
 type ChatMessage = { role: 'user' | 'assistant'; content: string; mode?: 'local' | 'gemini' };
@@ -87,6 +88,7 @@ export default function App() {
   const [signedIn, setSignedIn] = useState(false);
   const [name, setName] = useState('Maria Angeles');
   const [role, setRole] = useState<Role>('Pasyente');
+  const [language, setLanguage] = useState<Language>('Tagalog');
   const [screen, setScreen] = useState<Screen>('home');
   const [medicines, setMedicines] = useState(initialMedicines);
   const [reminders, setReminders] = useState(initialReminders);
@@ -109,7 +111,7 @@ export default function App() {
           {screen === 'reminders' && <RemindersScreen reminders={reminders} setReminders={setReminders} medicines={medicines} />}
           {screen === 'assistant' && <AssistantScreen medicines={medicines} onSupport={() => setScreen('support')} />}
           {screen === 'support' && <SupportScreen />}
-          {screen === 'account' && role === 'Pasyente' && <AccountScreen name={name} role={role} medicines={medicines} reminders={reminders} onNavigate={setScreen} onLogout={logout} />}
+          {screen === 'account' && role === 'Pasyente' && <AccountScreen name={name} role={role} medicines={medicines} reminders={reminders} language={language} onLanguageChange={setLanguage} onNavigate={setScreen} onLogout={logout} />}
           {screen === 'account' && role !== 'Pasyente' && <TeamAccountScreen name={name} role={role} onBack={() => setScreen(role === 'BHU Staff' ? 'staff-dashboard' : 'admin-dashboard')} onLogout={logout} />}
           {screen === 'staff-dashboard' && <StaffDashboard onNavigate={setScreen} />}
           {screen === 'staff-patients' && <StaffPatientsScreen />}
@@ -396,32 +398,36 @@ function ReportsScreen({ role }: { role: Role }) { return <View style={styles.ro
 
 function TeamAccountScreen({ name, role, onBack, onLogout }: { name: string; role: Role; onBack: () => void; onLogout: () => void }) { const initials = name.split(' ').filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase(); return <View style={styles.profileScreen}><View style={styles.profileTopbar}><Pressable onPress={onBack} style={styles.profileBack}><Ionicons name="chevron-back" size={20} color={COLORS.ink} /></Pressable><Text style={styles.profilePageTitle}>Aking Profile</Text></View><ScrollView contentContainerStyle={styles.profileContent}><View style={styles.legacyProfileHero}><View style={styles.profileHeroBubble} /><View style={styles.legacyProfileAvatar}><Text style={styles.legacyProfileInitial}>{initials}</Text></View><View style={styles.listCopy}><Text style={styles.legacyProfileName}>{name}</Text><Text style={styles.legacyProfileRole}>{role} · PharSayo Team</Text><Text style={styles.legacyProfileId}>{role === 'Admin' ? 'System Administrator' : 'Brgy. Sta. Cruz Health Center'}</Text></View></View><ProfileSection title="Account Information"><ProfileRow icon="mail-outline" label="Email" value={role === 'Admin' ? 'admin@pharsayo.ph' : 'ana.reyes@bhu.gov.ph'} /><ProfileRow icon="shield-checkmark-outline" label="Access Level" value={role} /><ProfileRow icon="business-outline" label="Organization" value={role === 'Admin' ? 'PharSayo National System' : 'Brgy. Sta. Cruz Health Center'} /></ProfileSection><Pressable onPress={onLogout} style={styles.legacyLogoutButton}><Ionicons name="log-out-outline" size={18} color={COLORS.danger} /><Text style={styles.legacyLogoutText}>Mag-logout</Text></Pressable></ScrollView></View>; }
 
-function AccountScreen({ name, role, medicines, reminders, onNavigate, onLogout }: { name: string; role: Role; medicines: Medicine[]; reminders: Reminder[]; onNavigate: (screen: Screen) => void; onLogout: () => void }) {
+function AccountScreen({ name, role, medicines, reminders, language, onLanguageChange, onNavigate, onLogout }: { name: string; role: Role; medicines: Medicine[]; reminders: Reminder[]; language: Language; onLanguageChange: (language: Language) => void; onNavigate: (screen: Screen) => void; onLogout: () => void }) {
   const initials = name.split(' ').filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'MA';
   const adherence = reminders.length ? Math.round(reminders.filter(item => item.enabled).length / reminders.length * 100) : 0;
+  const isTagalog = language === 'Tagalog';
   return <View style={styles.profileScreen}>
-    <View style={styles.profileTopbar}><Pressable onPress={() => onNavigate('home')} style={styles.profileBack}><Ionicons name="chevron-back" size={20} color={COLORS.ink} /></Pressable><Text style={styles.profilePageTitle}>Aking Profile</Text></View>
+    <View style={styles.profileTopbar}><Pressable onPress={() => onNavigate('home')} style={styles.profileBack}><Ionicons name="chevron-back" size={20} color={COLORS.ink} /></Pressable><Text style={styles.profilePageTitle}>{isTagalog ? 'Aking Profile' : 'My Profile'}</Text></View>
     <ScrollView contentContainerStyle={[styles.profileContent, styles.profileContentWithNav]} showsVerticalScrollIndicator={false}>
       <View style={styles.legacyProfileHero}><View style={styles.profileHeroBubble} /><View style={styles.legacyProfileAvatar}><Text style={styles.legacyProfileInitial}>{initials}</Text></View><View style={styles.listCopy}><Text style={styles.legacyProfileName}>{name}</Text><Text style={styles.legacyProfileRole}>{role} · PharSayo Member</Text><Text style={styles.legacyProfileId}>BHU ID: BSC-2024-00147</Text></View></View>
-      <ProfileSection title="Personal na Impormasyon">
-        <ProfileRow icon="person-outline" label="Buong Pangalan" value={name} />
-        <ProfileRow icon="calendar-outline" label="Petsa ng Kapanganakan" value="Marso 14, 1965 · 61 taong gulang" />
+      <ProfileSection title={isTagalog ? 'Personal na Impormasyon' : 'Personal Information'}>
+        <ProfileRow icon="person-outline" label={isTagalog ? 'Buong Pangalan' : 'Full Name'} value={name} />
+        <ProfileRow icon="calendar-outline" label={isTagalog ? 'Petsa ng Kapanganakan' : 'Date of Birth'} value={isTagalog ? 'Marso 14, 1965 · 61 taong gulang' : 'March 14, 1965 · 61 years old'} />
         <ProfileRow icon="call-outline" label="Contact" value="0917 123 4567" />
         <ProfileRow icon="location-outline" label="Address" value="123 Mabini St., Brgy. Sta. Cruz, Quezon City" />
       </ProfileSection>
-      <ProfileSection title="Impormasyon sa Kalusugan">
-        <ProfileRow icon="heart-outline" label="Kondisyon" value="Hypertension · Type 2 Diabetes" />
+      <ProfileSection title={isTagalog ? 'Impormasyon sa Kalusugan' : 'Health Information'}>
+        <ProfileRow icon="heart-outline" label={isTagalog ? 'Kondisyon' : 'Conditions'} value="Hypertension · Type 2 Diabetes" />
         <ProfileRow icon="water-outline" label="Blood Type" value="O Positive" />
-        <View style={styles.legacyProfileRow}><View style={styles.legacyProfileRowIcon}><Ionicons name="medical-outline" size={18} color={COLORS.brand} /></View><View style={styles.listCopy}><Text style={styles.legacyProfileLabel}>Mga Kasalukuyang Gamot</Text><View style={styles.profileMedicineChips}>{medicines.map(item => <View key={item.id} style={styles.profileMedicineChip}><Text style={styles.profileMedicineText}>{item.name} {item.dose}</Text></View>)}</View></View></View>
+        <View style={styles.legacyProfileRow}><View style={styles.legacyProfileRowIcon}><Ionicons name="medical-outline" size={18} color={COLORS.brand} /></View><View style={styles.listCopy}><Text style={styles.legacyProfileLabel}>{isTagalog ? 'Mga Kasalukuyang Gamot' : 'Current Medicines'}</Text><View style={styles.profileMedicineChips}>{medicines.map(item => <View key={item.id} style={styles.profileMedicineChip}><Text style={styles.profileMedicineText}>{item.name} {item.dose}</Text></View>)}</View></View></View>
         <ProfileRow icon="warning-outline" label="Allergy" value="Penicillin" danger />
       </ProfileSection>
-      <ProfileSection title="Adherence at Status">
-        <ProfileRow icon="pulse-outline" label="Adherence Ngayong Linggo" value={`${adherence}% ✓ Magaling!`} accent />
+      <ProfileSection title={isTagalog ? 'Adherence at Status' : 'Adherence and Status'}>
+        <ProfileRow icon="pulse-outline" label={isTagalog ? 'Adherence Ngayong Linggo' : 'Adherence This Week'} value={`${adherence}% · ${isTagalog ? 'Magaling!' : 'Great job!'}`} accent />
         <ProfileRow icon="shield-checkmark-outline" label="BHU" value="Brgy. Sta. Cruz Health Center" />
         <ProfileRow icon="people-outline" label="Health Worker" value="Nrs. Ana Reyes, RN" />
-        <ProfileRow icon="calendar-outline" label="Susunod na Check-up" value="Abril 22, 2026 · 9:00 AM" />
+        <ProfileRow icon="calendar-outline" label={isTagalog ? 'Susunod na Check-up' : 'Next Check-up'} value={isTagalog ? 'Abril 22, 2026 · 9:00 AM' : 'April 22, 2026 · 9:00 AM'} />
       </ProfileSection>
-      <Pressable onPress={onLogout} style={styles.legacyLogoutButton}><Ionicons name="log-out-outline" size={18} color={COLORS.danger} /><Text style={styles.legacyLogoutText}>Mag-logout</Text></Pressable>
+      <ProfileSection title={isTagalog ? 'Mga Setting' : 'Settings'}>
+        <View style={styles.languageSettingRow}><View style={styles.legacyProfileRowIcon}><Ionicons name="language-outline" size={18} color={COLORS.brand} /></View><View style={styles.languageSettingContent}><Text style={styles.legacyProfileLabel}>{isTagalog ? 'Wika ng App' : 'App Language'}</Text><View style={styles.languageSelector}>{(['Tagalog', 'English'] as Language[]).map(item => <Pressable key={item} onPress={() => onLanguageChange(item)} style={[styles.languageOption, language === item && styles.languageOptionActive]}><Text style={[styles.languageOptionText, language === item && styles.languageOptionTextActive]}>{item}</Text></Pressable>)}</View></View></View>
+      </ProfileSection>
+      <Pressable onPress={onLogout} style={styles.legacyLogoutButton}><Ionicons name="log-out-outline" size={18} color={COLORS.danger} /><Text style={styles.legacyLogoutText}>{isTagalog ? 'Mag-logout' : 'Log out'}</Text></Pressable>
     </ScrollView>
   </View>;
 }
@@ -493,6 +499,13 @@ const styles = StyleSheet.create({
   scanLayout:{width:'100%',paddingTop:22},
   scannerHelper:{width:'100%',marginHorizontal:0,paddingHorizontal:28,marginTop:18},
   profileContentWithNav:{paddingBottom:104},
+  languageSettingRow:{minHeight:92,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:15,paddingVertical:14},
+  languageSettingContent:{flex:1,minWidth:0},
+  languageSelector:{flexDirection:'row',gap:8,marginTop:8},
+  languageOption:{flex:1,minHeight:36,alignItems:'center',justifyContent:'center',borderRadius:12,borderWidth:1,borderColor:COLORS.line,backgroundColor:'#fff'},
+  languageOptionActive:{borderColor:COLORS.brand,backgroundColor:COLORS.mint},
+  languageOptionText:{fontSize:10,fontWeight:'700',color:COLORS.muted},
+  languageOptionTextActive:{color:COLORS.brandDark},
   inlineModalBackdrop:{position:'absolute',top:0,right:0,bottom:76,left:0,zIndex:30,justifyContent:'flex-end',backgroundColor:'rgba(15,38,32,.5)',overflow:'hidden'},
   liveCamera:{width:'100%',height:'100%'},cameraFlipButton:{position:'absolute',top:18,right:18,width:42,height:42,borderRadius:21,alignItems:'center',justifyContent:'center',backgroundColor:'rgba(13,43,36,.72)',borderWidth:1,borderColor:'rgba(255,255,255,.45)'},
   scanError:{flexDirection:'row',alignItems:'flex-start',gap:9,padding:13,borderRadius:14,backgroundColor:'#FFF0F0',marginTop:12},scanErrorText:{flex:1,fontSize:10,lineHeight:16,color:'#9D3D3D'},
