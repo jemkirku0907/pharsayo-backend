@@ -101,7 +101,7 @@ export default function App() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
       <View style={styles.appShell}>
-        {role === 'Pasyente' && screen !== 'account' && <AppHeader name={name} onAccount={() => setScreen('account')} onReminders={() => setScreen('reminders')} />}
+        {role === 'Pasyente' && !['account', 'scan'].includes(screen) && <AppHeader name={name} onAccount={() => setScreen('account')} onReminders={() => setScreen('reminders')} />}
         <View style={styles.screenArea}>
           {screen === 'home' && <HomeScreen medicines={medicines} setMedicines={setMedicines} onNavigate={setScreen} />}
           {screen === 'medicines' && <MedicinesScreen medicines={medicines} setMedicines={setMedicines} />}
