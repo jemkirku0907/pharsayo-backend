@@ -31,6 +31,13 @@
           "cameraPermission": "Payagan ang PharSayo na kunan ng larawan ang label ng gamot."
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Payagan ang PharSayo na gamitin ang camera para i-scan ang label ng gamot.",
+          "recordAudioAndroid": false
+        }
+      ],
       "expo-font"
     ]
   }
