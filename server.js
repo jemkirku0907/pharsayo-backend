@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const path = require('path');
-const { enhancedAssistantSystemPrompt, enhancedMedicationAnswer } = require('./medicine-assistant');
+const { enhancedAssistantSystemPrompt, enhancedMedicationAnswerAsync } = require('./medicine-assistant');
 const expoWebDir = path.join(__dirname, 'ios-app', 'dist');
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -122,7 +122,8 @@ app.post('/api/assistant', async (req, res) => {
     }
   }
 
-  return res.json({ answer: enhancedMedicationAnswer(question, medications), mode: 'local' });
+  const localResult = await enhancedMedicationAnswerAsync(question, medications);
+  return res.json({ answer: localResult.answer, mode: localResult.source === 'openfda' ? 'label' : 'local' });
 });
 
 app.post('/api/identify-medicine', async (req, res) => {

@@ -72,6 +72,59 @@ function findMedicine(text) {
   return medicineDatabase.find((item) => item.names.some((name) => normalized.includes(name)));
 }
 
+function extractMedicineCandidate(question) {
+  const text = String(question).toLowerCase().replace(/[^a-z0-9 -]/g, ' ');
+  const patterns = [
+    /(?:what is|what s|about|para saan ang|ano ang|gamot na)\s+([a-z][a-z0-9-]{2,})/,
+    /(?:effects?|dose|dosage|interaction|storage|expiry|take)\s+(?:of|for)?\s*([a-z][a-z0-9-]{2,})/,
+    /([a-z][a-z0-9-]{2,})\s+(?:side effects?|dose|dosage|interaction)/
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+function section(record, fields, maxLength = 420) {
+  for (const field of fields) {
+    const value = record[field];
+    if (!Array.isArray(value) || !value[0]) continue;
+    const clean = String(value[0]).replace(/\s+/g, ' ').trim();
+    return clean.length > maxLength ? clean.slice(0, maxLength).replace(/\s+\S*$/, '') + '?' : clean;
+  }
+  return '';
+}
+
+async function lookupOfficialLabel(question) {
+  const candidate = extractMedicineCandidate(question);
+  if (!candidate) return null;
+  const search = '(openfda.generic_name:"' + candidate + '" OR openfda.brand_name:"' + candidate + '")';
+  const url = 'https://api.fda.gov/drug/label.json?search=' + encodeURIComponent(search) + '&limit=1';
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(4500) });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    const record = payload?.results?.[0];
+    if (!record) return null;
+    const q = String(question).toLowerCase();
+    const english = isEnglish(question);
+    const labelName = record.openfda?.generic_name?.[0] || record.openfda?.brand_name?.[0] || candidate;
+    let detail;
+    if (/side effect|adverse|epekto|reaction/.test(q)) detail = section(record, ['adverse_reactions', 'warnings', 'warnings_and_cautions']);
+    else if (/interact|sabay|combine|halo|alcohol|alak|supplement/.test(q)) detail = section(record, ['drug_interactions', 'warnings_and_cautions', 'warnings']);
+    else if (/dose|dosage|how much|ilang|gaano.*karami/.test(q)) detail = section(record, ['dosage_and_administration', 'directions'], 360);
+    else if (/pregnan|buntis|breastfeed|nagpapasuso|lactat/.test(q)) detail = section(record, ['pregnancy', 'nursing_mothers', 'use_in_specific_populations', 'warnings']);
+    else detail = section(record, ['indications_and_usage', 'purpose', 'description']);
+    if (!detail) return null;
+    return english
+      ? 'Official label match for ' + labelName + ': ' + detail + ' This label summary may differ from your local product. Follow your own package and confirm personal dosing or treatment decisions with a pharmacist or clinician.'
+      : 'Official label match para sa ' + labelName + ': ' + detail + ' Maaaring iba ito sa local product mo. Sundin ang sarili mong package at ikumpirma sa pharmacist o clinician ang personal dose o treatment decision.';
+  } catch {
+    return null;
+  }
+}
+
 function enhancedMedicationAnswer(question = '', currentMedicines = []) {
   const raw = String(question).trim();
   const q = raw.toLowerCase();
@@ -102,4 +155,13 @@ function enhancedMedicationAnswer(question = '', currentMedicines = []) {
   return (english ? 'I can help with medicine uses, label directions, schedules, missed doses, side effects, interactions, food or alcohol, storage, expiry, pregnancy or breastfeeding precautions, and safety. Send the exact name, strength, dosage form, and your question.' : 'Makakatulong ako sa gamit ng gamot, label directions, schedule, missed dose, side effects, interactions, pagkain o alcohol, storage, expiry, pregnancy o breastfeeding precautions, at safety. I-type ang exact name, strength, dosage form, at tanong mo.') + context;
 }
 
-module.exports = { enhancedAssistantSystemPrompt, enhancedMedicationAnswer };
+async function enhancedMedicationAnswerAsync(question = '', currentMedicines = []) {
+  if (findMedicine(String(question))) {
+    return { answer: enhancedMedicationAnswer(question, currentMedicines), source: 'local' };
+  }
+  const officialAnswer = await lookupOfficialLabel(question);
+  if (officialAnswer) return { answer: officialAnswer, source: 'openfda' };
+  return { answer: enhancedMedicationAnswer(question, currentMedicines), source: 'local' };
+}
+
+module.exports = { enhancedAssistantSystemPrompt, enhancedMedicationAnswer, enhancedMedicationAnswerAsync };
