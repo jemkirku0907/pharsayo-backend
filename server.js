@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const path = require('path');
+const { enhancedAssistantSystemPrompt, enhancedMedicationAnswer } = require('./medicine-assistant');
 const expoWebDir = path.join(__dirname, 'ios-app', 'dist');
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -100,7 +101,7 @@ app.post('/api/assistant', async (req, res) => {
         ? `\nCurrent medication list supplied by the app:\n${medications.map((item) => `- ${item.name || 'Unknown'} ${item.dose || ''} at ${item.time || 'unspecified time'}`).join('\n')}`
         : '';
       const contents = [
-        { role: 'user', parts: [{ text: assistantSystemPrompt + medicineContext }] },
+        { role: 'user', parts: [{ text: enhancedAssistantSystemPrompt + medicineContext }] },
         ...messages.map((message) => ({
           role: message.role === 'assistant' ? 'model' : 'user',
           parts: [{ text: String(message.content || '') }]
@@ -121,7 +122,7 @@ app.post('/api/assistant', async (req, res) => {
     }
   }
 
-  return res.json({ answer: localMedicationAnswer(question), mode: 'local' });
+  return res.json({ answer: enhancedMedicationAnswer(question, medications), mode: 'local' });
 });
 
 app.post('/api/identify-medicine', async (req, res) => {
