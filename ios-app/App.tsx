@@ -8,6 +8,7 @@ import { Poppins_600SemiBold } from '@expo-google-fonts/poppins/600SemiBold';
 import { Poppins_700Bold } from '@expo-google-fonts/poppins/700Bold';
 import { Poppins_800ExtraBold } from '@expo-google-fonts/poppins/800ExtraBold';
 import { useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { TextInputProps, TextProps } from 'react-native';
 import {
   ActivityIndicator,
@@ -97,7 +98,7 @@ export default function App() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
       <View style={styles.appShell}>
-        <AppHeader name={name} onAccount={() => setScreen('account')} onReminders={() => setScreen('reminders')} />
+        {screen !== 'account' && <AppHeader name={name} onAccount={() => setScreen('account')} onReminders={() => setScreen('reminders')} />}
         <View style={styles.screenArea}>
           {screen === 'home' && <HomeScreen medicines={medicines} setMedicines={setMedicines} onNavigate={setScreen} />}
           {screen === 'medicines' && <MedicinesScreen medicines={medicines} setMedicines={setMedicines} />}
@@ -105,9 +106,9 @@ export default function App() {
           {screen === 'reminders' && <RemindersScreen reminders={reminders} setReminders={setReminders} medicines={medicines} />}
           {screen === 'assistant' && <AssistantScreen medicines={medicines} onSupport={() => setScreen('support')} />}
           {screen === 'support' && <SupportScreen />}
-          {screen === 'account' && <AccountScreen name={name} setName={setName} role={role} setRole={setRole} reminders={reminders} onNavigate={setScreen} onLogout={() => setSignedIn(false)} />}
+          {screen === 'account' && <AccountScreen name={name} role={role} medicines={medicines} reminders={reminders} onNavigate={setScreen} onLogout={() => setSignedIn(false)} />}
         </View>
-        <BottomNav active={screen} onChange={setScreen} />
+        {screen !== 'account' && <BottomNav active={screen} onChange={setScreen} />}
       </View>
     </SafeAreaView>
   );
@@ -318,22 +319,38 @@ function AssistantScreen({ medicines, onSupport }: { medicines: Medicine[]; onSu
 
 function SupportScreen() { return <ScrollView contentContainerStyle={styles.page}><PageTitle eyebrow="BHU SUPPORT" title="Hindi ka nag-iisa." copy="Makipag-ugnayan sa inyong Barangay Health Unit para sa gabay." /><View style={styles.supportCard}><View style={styles.supportIcon}><Ionicons name="heart-outline" size={25} color={COLORS.brand} /></View><Text style={styles.supportTitle}>BHU San Isidro</Text><Text style={styles.supportCopy}>Barangay Health Center{`\n`}Bukas · 8:00 AM–5:00 PM</Text><Pressable onPress={() => Alert.alert('BHU San Isidro', '(02) 8123-4567')} style={styles.primaryButton}><Text style={styles.primaryButtonText}>Tumawag sa BHU</Text></Pressable></View><View style={[styles.supportCard, styles.emergencyCard]}><Text style={styles.supportTitle}>Emergency?</Text><Text style={styles.supportCopy}>Kung malubha ang nararamdaman, tumawag agad sa 911 o pumunta sa pinakamalapit na ospital.</Text></View></ScrollView>; }
 
-function AccountScreen({ name, setName, role, setRole, reminders, onNavigate, onLogout }: { name: string; setName: (name: string) => void; role: Role; setRole: (role: Role) => void; reminders: Reminder[]; onNavigate: (screen: Screen) => void; onLogout: () => void }) {
-  const [draftName, setDraftName] = useState(name);
-  const enabledReminders = reminders.filter(item => item.enabled).length;
-  function saveProfile() { const cleanName = draftName.trim(); if (!cleanName) return Alert.alert('Ilagay ang pangalan'); setName(cleanName); Alert.alert('Naka-save', 'Na-update na ang iyong account.'); }
-  return <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
-    <PageTitle eyebrow="ACCOUNT SETTINGS" title="Iyong account" copy="Profile, access, reminders, at support." />
-    <View style={styles.profileCard}><View style={styles.profileAvatar}><Text style={styles.profileInitial}>{(draftName.trim()[0] || 'M').toUpperCase()}</Text></View><Text style={styles.profileName}>{name}</Text><Text style={styles.profileRole}>{role}</Text></View>
-    <Text style={styles.settingsHeading}>PERSONAL INFORMATION</Text>
-    <View style={styles.settingsCard}><Text style={styles.label}>PANGALAN</Text><View style={styles.fieldWrap}><Ionicons name="person-outline" size={19} color="#86A69E" /><TextInput value={draftName} onChangeText={setDraftName} placeholder="Buong pangalan" style={styles.fieldInput} /></View><Text style={styles.label}>ACCOUNT TYPE</Text><View style={styles.roleTabs}>{(['Pasyente', 'BHU Staff', 'Admin'] as Role[]).map(item => <Pressable key={item} onPress={() => setRole(item)} style={[styles.roleTab, role === item && styles.roleTabActive]}><Text style={[styles.roleText, role === item && styles.roleTextActive]}>{item}</Text></Pressable>)}</View><Pressable onPress={saveProfile} style={styles.primaryButton}><Text style={styles.primaryButtonText}>I-save ang pagbabago</Text></Pressable></View>
-    <Text style={styles.settingsHeading}>APP SETTINGS</Text>
-    <View style={styles.settingsCard}><SettingsRow icon="notifications-outline" label="Mga paalaala" value={`${enabledReminders} naka-on`} onPress={() => onNavigate('reminders')} /><SettingsRow icon="heart-outline" label="BHU support" value="Contact at emergency" onPress={() => onNavigate('support')} /><SettingsRow icon="shield-checkmark-outline" label="Privacy at kaligtasan" value="Health data controls" onPress={() => Alert.alert('Privacy', 'Ang scanned image ay ginagamit lamang para sa requested analysis. Kumpirmahin pa rin ang gamot sa original packaging o pharmacist.')} /></View>
-    <Pressable onPress={onLogout} style={styles.logoutButton}><Ionicons name="log-out-outline" size={19} color={COLORS.danger} /><Text style={styles.logoutText}>Mag-log out</Text></Pressable>
-  </ScrollView>;
+function AccountScreen({ name, role, medicines, reminders, onNavigate, onLogout }: { name: string; role: Role; medicines: Medicine[]; reminders: Reminder[]; onNavigate: (screen: Screen) => void; onLogout: () => void }) {
+  const initials = name.split(' ').filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'MA';
+  const adherence = reminders.length ? Math.round(reminders.filter(item => item.enabled).length / reminders.length * 100) : 0;
+  return <View style={styles.profileScreen}>
+    <View style={styles.profileTopbar}><Pressable onPress={() => onNavigate('home')} style={styles.profileBack}><Ionicons name="chevron-back" size={20} color={COLORS.ink} /></Pressable><Text style={styles.profilePageTitle}>Aking Profile</Text></View>
+    <ScrollView contentContainerStyle={styles.profileContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.legacyProfileHero}><View style={styles.profileHeroBubble} /><View style={styles.legacyProfileAvatar}><Text style={styles.legacyProfileInitial}>{initials}</Text></View><View style={styles.listCopy}><Text style={styles.legacyProfileName}>{name}</Text><Text style={styles.legacyProfileRole}>{role} · PharSayo Member</Text><Text style={styles.legacyProfileId}>BHU ID: BSC-2024-00147</Text></View></View>
+      <ProfileSection title="Personal na Impormasyon">
+        <ProfileRow icon="person-outline" label="Buong Pangalan" value={name} />
+        <ProfileRow icon="calendar-outline" label="Petsa ng Kapanganakan" value="Marso 14, 1965 · 61 taong gulang" />
+        <ProfileRow icon="call-outline" label="Contact" value="0917 123 4567" />
+        <ProfileRow icon="location-outline" label="Address" value="123 Mabini St., Brgy. Sta. Cruz, Quezon City" />
+      </ProfileSection>
+      <ProfileSection title="Impormasyon sa Kalusugan">
+        <ProfileRow icon="heart-outline" label="Kondisyon" value="Hypertension · Type 2 Diabetes" />
+        <ProfileRow icon="water-outline" label="Blood Type" value="O Positive" />
+        <View style={styles.legacyProfileRow}><View style={styles.legacyProfileRowIcon}><Ionicons name="medical-outline" size={18} color={COLORS.brand} /></View><View style={styles.listCopy}><Text style={styles.legacyProfileLabel}>Mga Kasalukuyang Gamot</Text><View style={styles.profileMedicineChips}>{medicines.map(item => <View key={item.id} style={styles.profileMedicineChip}><Text style={styles.profileMedicineText}>{item.name} {item.dose}</Text></View>)}</View></View></View>
+        <ProfileRow icon="warning-outline" label="Allergy" value="Penicillin" danger />
+      </ProfileSection>
+      <ProfileSection title="Adherence at Status">
+        <ProfileRow icon="pulse-outline" label="Adherence Ngayong Linggo" value={`${adherence}% ✓ Magaling!`} accent />
+        <ProfileRow icon="shield-checkmark-outline" label="BHU" value="Brgy. Sta. Cruz Health Center" />
+        <ProfileRow icon="people-outline" label="Health Worker" value="Nrs. Ana Reyes, RN" />
+        <ProfileRow icon="calendar-outline" label="Susunod na Check-up" value="Abril 22, 2026 · 9:00 AM" />
+      </ProfileSection>
+      <Pressable onPress={onLogout} style={styles.legacyLogoutButton}><Ionicons name="log-out-outline" size={18} color={COLORS.danger} /><Text style={styles.legacyLogoutText}>Mag-logout</Text></Pressable>
+    </ScrollView>
+  </View>;
 }
 
-function SettingsRow({ icon, label, value, onPress }: { icon: IconName; label: string; value: string; onPress: () => void }) { return <Pressable onPress={onPress} style={styles.settingsRow}><View style={styles.settingsIcon}><Ionicons name={icon} size={20} color={COLORS.brand} /></View><View style={styles.listCopy}><Text style={styles.listTitle}>{label}</Text><Text style={styles.listSubtitle}>{value}</Text></View><Ionicons name="chevron-forward" size={18} color="#91A39D" /></Pressable>; }
+function ProfileSection({ title, children }: { title: string; children: ReactNode }) { return <View style={styles.legacyProfileSection}><Text style={styles.legacyProfileSectionTitle}>{title}</Text><View style={styles.legacyProfileCard}>{children}</View></View>; }
+function ProfileRow({ icon, label, value, danger, accent }: { icon: IconName; label: string; value: string; danger?: boolean; accent?: boolean }) { return <View style={styles.legacyProfileRow}><View style={styles.legacyProfileRowIcon}><Ionicons name={icon} size={18} color={COLORS.brand} /></View><View style={styles.listCopy}><Text style={styles.legacyProfileLabel}>{label}</Text><Text style={[styles.legacyProfileValue, danger && styles.profileDanger, accent && styles.profileAccent]}>{value}</Text></View></View>; }
 
 function AppHeaderPlaceholder() { return null; }
 void AppHeaderPlaceholder;
@@ -394,5 +411,5 @@ const styles = StyleSheet.create({
   legacyHomePage:{paddingBottom:96},legacyScanBanner:{marginHorizontal:18,marginTop:4,minHeight:157,borderRadius:24,paddingHorizontal:20,paddingVertical:20,backgroundColor:COLORS.brand,overflow:'hidden'},homeBubbleBottom:{position:'absolute',width:90,height:90,borderRadius:45,right:28,bottom:-38,backgroundColor:'rgba(255,255,255,.07)'},legacyBannerLabel:{fontSize:10,color:'rgba(255,255,255,.78)',fontWeight:'600'},legacyBannerTitle:{fontSize:17,lineHeight:23,fontWeight:'800',color:'#fff',marginTop:4},legacyBannerButton:{alignSelf:'flex-start',minHeight:36,flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:16,borderRadius:20,backgroundColor:'#fff',marginTop:14},legacyBannerButtonText:{fontSize:11,fontWeight:'800',color:COLORS.brand},legacyReminder:{marginHorizontal:18,marginTop:18,minHeight:104,borderRadius:20,borderWidth:1,borderColor:'#F9DDAA',padding:16,flexDirection:'row',alignItems:'center',gap:12,backgroundColor:'#FFF8ED'},reminderIcon:{width:46,height:46,borderRadius:15,alignItems:'center',justifyContent:'center',backgroundColor:'#F6A623'},reminderTitle:{fontSize:12,fontWeight:'800',lineHeight:17,color:COLORS.ink},reminderSub:{fontSize:9,lineHeight:14,color:'#9A7020',marginTop:3},reminderButton:{minHeight:36,justifyContent:'center',paddingHorizontal:12,borderRadius:20,backgroundColor:'#F6A623'},reminderButtonText:{fontSize:9,fontWeight:'800',color:'#fff'},legacySectionRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:18,marginBottom:11,paddingHorizontal:18},legacySectionTitle:{fontSize:14,fontWeight:'800',color:COLORS.ink},categoryGrid:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',rowGap:12,paddingHorizontal:18},categoryCard:{width:'48%',minHeight:132,borderRadius:20,borderWidth:1,borderColor:COLORS.line,padding:15,backgroundColor:'#fff'},categoryIcon:{width:46,height:46,borderRadius:15,alignItems:'center',justifyContent:'center'},categoryName:{fontSize:12,fontWeight:'800',color:COLORS.ink,marginTop:11},categoryCount:{fontSize:9,color:'#8AADA6',marginTop:3},homeMedicineList:{paddingHorizontal:18},
   scanError:{flexDirection:'row',alignItems:'flex-start',gap:9,padding:13,borderRadius:14,backgroundColor:'#FFF0F0',marginTop:12},scanErrorText:{flex:1,fontSize:10,lineHeight:16,color:'#9D3D3D'},
   scanResult:{padding:18,borderRadius:21,borderWidth:1,borderColor:COLORS.line,backgroundColor:'#fff',marginTop:14},scanResultTop:{flexDirection:'row',alignItems:'center',gap:12},scanResultIcon:{width:48,height:48,borderRadius:15,alignItems:'center',justifyContent:'center',backgroundColor:COLORS.mint},scanResultName:{fontSize:20,fontWeight:'800',color:COLORS.ink},visibleText:{fontSize:10,lineHeight:16,color:COLORS.muted,backgroundColor:COLORS.mintSoft,padding:10,borderRadius:11,marginTop:14},scanResultGuidance:{fontSize:11,lineHeight:18,color:COLORS.ink,marginTop:12},resultButton:{minHeight:46,borderRadius:13,alignItems:'center',justifyContent:'center',backgroundColor:COLORS.brand,marginTop:15},scanSafety:{fontSize:9,lineHeight:14,color:COLORS.muted,textAlign:'center',marginTop:10},
-  profileCard:{alignItems:'center',padding:22,borderRadius:22,backgroundColor:COLORS.brand},profileAvatar:{width:68,height:68,borderRadius:22,alignItems:'center',justifyContent:'center',backgroundColor:'rgba(255,255,255,.18)',borderWidth:2,borderColor:'rgba(255,255,255,.45)'},profileInitial:{fontSize:27,fontWeight:'800',color:'#fff'},profileName:{fontSize:20,fontWeight:'800',color:'#fff',marginTop:11},profileRole:{fontSize:10,color:'rgba(255,255,255,.82)',marginTop:2},settingsHeading:{fontSize:9,fontWeight:'800',letterSpacing:1.4,color:COLORS.brand,marginTop:22,marginBottom:8,paddingHorizontal:2},settingsCard:{padding:15,borderRadius:20,borderWidth:1,borderColor:COLORS.line,backgroundColor:'#fff'},settingsRow:{minHeight:62,flexDirection:'row',alignItems:'center',gap:11,borderBottomWidth:1,borderBottomColor:'#E8F3F0'},settingsIcon:{width:39,height:39,borderRadius:12,alignItems:'center',justifyContent:'center',backgroundColor:COLORS.mintSoft},logoutButton:{minHeight:50,borderRadius:14,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,borderWidth:1,borderColor:'#F1CACA',backgroundColor:'#FFF7F7',marginTop:15},logoutText:{fontSize:12,fontWeight:'700',color:COLORS.danger},
+  profileScreen:{flex:1,backgroundColor:COLORS.bg},profileTopbar:{minHeight:66,flexDirection:'row',alignItems:'center',gap:12,paddingHorizontal:18},profileBack:{width:38,height:38,borderRadius:19,alignItems:'center',justifyContent:'center',backgroundColor:'#fff',borderWidth:1,borderColor:COLORS.line},profilePageTitle:{fontSize:17,fontWeight:'800',color:COLORS.ink},profileContent:{paddingBottom:28},legacyProfileHero:{marginHorizontal:18,marginBottom:18,minHeight:112,borderRadius:24,paddingHorizontal:20,paddingVertical:22,flexDirection:'row',alignItems:'center',gap:16,backgroundColor:COLORS.brand,overflow:'hidden'},profileHeroBubble:{position:'absolute',width:110,height:110,borderRadius:55,right:-30,top:-30,backgroundColor:'rgba(255,255,255,.09)'},legacyProfileAvatar:{width:64,height:64,borderRadius:22,alignItems:'center',justifyContent:'center',backgroundColor:'rgba(255,255,255,.2)',borderWidth:2.5,borderColor:'rgba(255,255,255,.45)'},legacyProfileInitial:{fontSize:20,fontWeight:'800',color:'#fff'},legacyProfileName:{fontSize:18,fontWeight:'800',color:'#fff'},legacyProfileRole:{fontSize:10,color:'rgba(255,255,255,.78)',marginTop:3},legacyProfileId:{fontSize:9,fontWeight:'600',letterSpacing:.4,color:'rgba(255,255,255,.62)',marginTop:3},legacyProfileSection:{marginHorizontal:18,marginBottom:16},legacyProfileSectionTitle:{fontSize:9,fontWeight:'700',letterSpacing:.8,color:'#8AADA6',textTransform:'uppercase',marginBottom:9},legacyProfileCard:{borderRadius:18,borderWidth:1,borderColor:COLORS.line,backgroundColor:'#fff',overflow:'hidden'},legacyProfileRow:{minHeight:65,flexDirection:'row',alignItems:'center',gap:13,paddingHorizontal:15,paddingVertical:12,borderBottomWidth:1,borderBottomColor:COLORS.line},legacyProfileRowIcon:{width:36,height:36,borderRadius:12,alignItems:'center',justifyContent:'center',backgroundColor:COLORS.mint},legacyProfileLabel:{fontSize:9,color:'#8AADA6',fontWeight:'600'},legacyProfileValue:{fontSize:11,lineHeight:17,color:COLORS.ink,fontWeight:'600',marginTop:2},profileDanger:{color:COLORS.danger},profileAccent:{color:COLORS.brand},profileMedicineChips:{flexDirection:'row',flexWrap:'wrap',gap:6,marginTop:7},profileMedicineChip:{paddingHorizontal:9,paddingVertical:5,borderRadius:11,borderWidth:1,borderColor:COLORS.line,backgroundColor:'#E2F5F0'},profileMedicineText:{fontSize:9,fontWeight:'600',color:COLORS.muted},legacyLogoutButton:{minHeight:48,marginHorizontal:18,borderRadius:24,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,borderWidth:1,borderColor:'#F3CFCF',backgroundColor:'#FDEAEA'},legacyLogoutText:{fontSize:12,fontWeight:'800',color:COLORS.danger},
 });
